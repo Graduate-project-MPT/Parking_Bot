@@ -1,6 +1,4 @@
 import asyncio
-import dispatcher
-import asyncio
 import logging
 
 from aiogram import Bot
@@ -18,7 +16,7 @@ async def main():
 
     logging.basicConfig(level=logging.INFO)
     bot = Bot(
-        token=settings.bot_token,
+        token=settings.TOKEN_API,
         parse_mode=ParseMode.HTML,
     )
     await dp.start_polling(bot)
