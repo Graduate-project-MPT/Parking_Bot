@@ -46,7 +46,7 @@ FROM
 		WHERE (a.digit * 10 + b.digit) <= 90 && (a.digit * 10 + b.digit) >= 65
         ORDER BY _code
 	) let_code
-ORDER BY let_code._code, num.num
+ORDER BY let_code._code, num.num;
 
 create table wp_usermeta(
     ID bigint not null auto_increment primary key,
@@ -138,15 +138,14 @@ BEGIN
 		inner join wp_user u on id_user = u.ID
 		inner join wp_place p on id_place = p.ID
 		WHERE r.ID = NEW.ID);
-END;
-DELIMITER //
+END//
+-- DELIMITER //
 
-DELIMITER //
 CREATE TRIGGER reserve_update
 AFTER UPDATE ON wp_reserve
 FOR EACH ROW
 BEGIN
 	UPDATE wp_reserve_history set is_deleted_reserve = 1 
 		WHERE id_reserve = NEW.ID;
-END;
-DELIMITER //
+END//
+-- DELIMITER //
