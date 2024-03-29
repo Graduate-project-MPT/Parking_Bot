@@ -102,7 +102,10 @@ CREATE TABLE wp_reserve(
 	FOREIGN KEY(place_id) REFERENCES wp_place(ID),
 	FOREIGN KEY(user_id) REFERENCES wp_users(ID),
 	
-	CONSTRAINT CH_timestamp_reserve CHECK(reserve_begin > reserve_end)
+	CONSTRAINT CH_timestamp_reserve CHECK(reserve_begin < reserve_end)
+
+	
+	CONSTRAINT CH_reserve CHECK(reserve_begin < reserve_end && )
 );
 
 
@@ -131,21 +134,35 @@ CREATE TRIGGER reserve_insert
 AFTER INSERT ON wp_reserve
 FOR EACH ROW
 BEGIN
-	INSERT INTO wp_reserve_history(id_reserve, begin_reserve, end_reserve, user_login, place_code)
-		(select r.ID, r.begin_reserve, r.end_reserve,
-			   u.login_user, p.code_place
+	INSERT INTO wp_reserve_history(rhistory_id_reserve, rhistory_begin_reserve, rhistory_end_reserve, rhistory_user_login, rhistory_place_code)
+		(select r.ID, r.reserve_begin, r.reserve_end,
+			   u.user_login, p.place_code
 		from wp_reserve r
-		inner join wp_user u on id_user = u.ID
-		inner join wp_place p on id_place = p.ID
+		inner join wp_user u on r.user_id = u.ID
+		inner join wp_place p on r.place_id = p.ID
 		WHERE r.ID = NEW.ID);
 END//
--- DELIMITER //
 
 CREATE TRIGGER reserve_update
 AFTER UPDATE ON wp_reserve
 FOR EACH ROW
 BEGIN
-	UPDATE wp_reserve_history set is_deleted_reserve = 1 
-		WHERE id_reserve = NEW.ID;
+	UPDATE wp_reserve_history set rhistory_is_deleted_reserve = 1 
+		WHERE rhistory_id_reserve = NEW.ID;
+END//
+
+CREATE TRIGGER reserve_check
+BEFORE INSERT ON wp_reserve
+FOR EACH ROW
+BEGIN
+	IF EXISTS (
+		SELECT * from wp_reserve
+			WHERE (
+				(NEW.reserve_begin BETWEEN start_date AND end_date) OR
+				(NEW.reserve_end BETWEEN start_date AND end_date)
+			) && (NEW.place_id == place_id) && (reserve_is_deleted == 0)
+	) THEN
+        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Пересечение диапазонов дат недопустимо';
+    END IF;
 END//
 -- DELIMITER //
