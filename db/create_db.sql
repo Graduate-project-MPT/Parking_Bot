@@ -1,6 +1,6 @@
 USE db;
 
-create table wp_users(
+create table wp_user(
     ID bigint not null auto_increment primary key,
     user_login varchar(255) not null unique,
     user_pass varchar(255) not null,
@@ -11,7 +11,7 @@ create table wp_users(
     user_status int not null,
     user_display_name varchar(255) not null
 );
-INSERT INTO wp_users (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_status, user_display_name)
+INSERT INTO wp_user (user_login, user_pass, user_nicename, user_email, user_url, user_registered, user_status, user_display_name)
 VALUES
   ('user1', '$2a$04$eGyRRh99ZVxqdR7s8S9hs.H6xMFRqrKIMOfII1sOfCkfbpeLGYCpC', 'User One', 'user1@email.com', 'http://user1.com', NOW(), 1, 'User One'),
   ('user2', '$2a$04$eGyRRh99ZVxqdR7s8S9hs.H6xMFRqrKIMOfII1sOfCkfbpeLGYCpC', 'User Two', 'user2@email.com', 'http://user2.com', NOW(), 1, 'User Two'),
@@ -53,19 +53,21 @@ create table wp_usermeta(
     user_id bigint not null,
     user_meta_key varchar(100) null,
     user_meta_value longtext null,
-    foreign key (user_id) references wp_users (ID)
+    foreign key (user_id) references wp_user (ID)
 );
 
 create table wp_message(
     ID bigint not null auto_increment primary key,
     message_date bigint null default(now()),
-    user_id bigint null,
-    telegram_message_id bigint not null,
-    message_answer_id bigint null,
+	message_user_telegram_id bigint not null,
+	message_bot_telegram_id bigint not null,
+    message_telegram_id bigint not null,
     message_text text null,
 
+    user_id bigint null,
+    message_answer_id bigint null,
     foreign key (message_answer_id) references wp_message(ID),
-    foreign key (user_id) references wp_users (ID)
+    foreign key (user_id) references wp_user (ID)
 );
 
 create table wp_document(
@@ -100,12 +102,9 @@ CREATE TABLE wp_reserve(
 	user_id BIGINT NOT NULL,
 
 	FOREIGN KEY(place_id) REFERENCES wp_place(ID),
-	FOREIGN KEY(user_id) REFERENCES wp_users(ID),
+	FOREIGN KEY(user_id) REFERENCES wp_user(ID),
 	
 	CONSTRAINT CH_timestamp_reserve CHECK(reserve_begin < reserve_end)
-
-	
-	CONSTRAINT CH_reserve CHECK(reserve_begin < reserve_end && )
 );
 
 
@@ -158,9 +157,9 @@ BEGIN
 	IF EXISTS (
 		SELECT * from wp_reserve
 			WHERE (
-				(NEW.reserve_begin BETWEEN start_date AND end_date) OR
-				(NEW.reserve_end BETWEEN start_date AND end_date)
-			) && (NEW.place_id == place_id) && (reserve_is_deleted == 0)
+				(NEW.reserve_begin BETWEEN reserve_begin AND reserve_end) OR
+				(NEW.reserve_end BETWEEN reserve_begin AND reserve_end)
+			) AND (NEW.place_id = place_id) AND (reserve_is_deleted = 0)
 	) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Пересечение диапазонов дат недопустимо';
     END IF;
