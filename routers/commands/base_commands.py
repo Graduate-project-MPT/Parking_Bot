@@ -16,7 +16,3 @@ async def handle_start(message: types.Message):
 @router.message(Command("help"))
 async def handle_help(message: types.Message):
     await message.answer("I am parking bot")
-    
-@router.message(Command("users"))
-async def handle_help(message: types.Message):
-    await message.answer(f"login = {models.get_users().first().user_login}")
