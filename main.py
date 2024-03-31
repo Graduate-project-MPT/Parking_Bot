@@ -1,10 +1,9 @@
+from aiogram import Dispatcher
+from config import settings
+from routers import router as main_router
 import asyncio
 import logging
 
-from aiogram import Dispatcher
-
-from config import settings
-from routers import router as main_router
 
 async def main():
     dp = Dispatcher()
