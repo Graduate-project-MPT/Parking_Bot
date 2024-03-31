@@ -3,7 +3,9 @@ from dotenv import load_dotenv
 from aiogram import Bot
 from aiogram.enums import ParseMode
 
+
 load_dotenv()
+
 
 class Settings:
     CON_STRING: str = os.getenv('CON_STRING')
@@ -16,5 +18,6 @@ class Settings:
         token=TOKEN_API,
         parse_mode=ParseMode.HTML
     )
+
 
 settings = Settings()
