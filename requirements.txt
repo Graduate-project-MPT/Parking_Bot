@@ -5,3 +5,4 @@ mysqlclient
 pymysql
 bcrypt
 python-dotenv
+pycodestyle
