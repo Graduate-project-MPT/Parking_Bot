@@ -187,69 +187,30 @@ def find_message_by_id(message_id: int, is_bot: bool):
     filter_condition = (WPMessage.message_telegram_id == message_id) & \
                        ((not WPMessage.user_id) if is_bot else (WPMessage.user_id))
     return sql_query(WPMessage, filter_condition).first()
-    # mess = sql_query(WPMessage, (WPMessage.message_telegram_id == message_id))
-    # if is_bot:
-    #     mess = mess.filter(not WPMessage.user_id).first()
-    # else:
-    #     mess = mess.filter(WPMessage.user_id).first()
-    # return mess
 
 # Находит запись сообщение по коду сообщения отправленного ботом
 def find_bot_message_by_id(message_bot_id: int, is_bot: bool):
     filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & \
                        ((not WPMessage.user_id) if is_bot else (WPMessage.user_id))
     return sql_query(WPMessage, filter_condition).first()
-    # try:
-    #     mess = session.query(WPMessage).filter(
-    #         WPMessage.message_bot_telegram_id == message_id
-    #     )
-    #     if is_bot:
-    #         mess = mess.filter(not WPMessage.user_id).first()
-    #     else:
-    #         mess = mess.filter(WPMessage.user_id).first()
-
-    #     session.close()
-    #     return mess
-    # except Exception as e:
-    #     return None
 
 # Находит запись сообщение по коду сообщения отправленного пользователем
 def find_message_by_user_id(user_id: int):
     filter_condition = (WPMessage.user_id == user_id)
     return sql_query(WPMessage, filter_condition).order_by(desc(WPMessage.ID))
-    # try:
-    #     query = (
-    #         select(WPMessage)
-    #         .order_by(desc(WPMessage.ID))
-    #         .where(WPMessage.user_id == user_id)
-    #     )
-    #     return session.scalars(query).first()
-    # except Exception as e:
-    #     return None
 
 #
 def find_user_message_id(user_id: int):
     return sql_query(WPUserMeta, (WPUserMeta.user_id == user_id)).first()
-    # return session.query(WPUserMeta).filter(
-    #     WPUserMeta.user_id == user_id
-    # ).first().user_message_id
 
 # Проерка авторизирован ли пользователь под данным телеграм кодом
 def is_telegram_id_set(user: WPUser, telegram_id: int):
     filter_condition = (WPUserMeta.user_id == user.ID & WPUserMeta.user_meta_key == TELEGRAM_ID)
     return sql_query(WPUserMeta, filter_condition).first()
-    # usermeta = session.query(WPUserMeta).filter_by(
-    #     user_id=user.ID, user_meta_key=TELEGRAM_ID
-    # ).first()
-    # session.close()
-    # if usermeta and int(usermeta.user_meta_value) == telegram_id:
-    #     return True
-    # return False
 
 
 # Запросы изменений
-# Создание резервации места на парковке
-# (Если вернет False резервация не удалась)
+# Создание резервации места на парковке (Если вернет False резервация не удалась)
 def add_reserves(user: WPUser, hours_count: int):
     now = datetime.now()
     timestamp_begin = now.timestamp()
@@ -273,40 +234,6 @@ def add_reserves(user: WPUser, hours_count: int):
     )
     if sql_add(new_reserve):
         return place
-    # try:
-    #     now = datetime.now()
-    #     _begin = now.timestamp()
-    #     _end = (now + timedelta(hours=hours_count)).timestamp()
-    #     filter_condition = \
-    #         (WPReserve.reserve_begin.between(_begin, _end)) | \
-    #         (WPReserve.reserve_end.between(_begin, _end))
-
-    #     reserves = session.query(WPReserve).filter(
-    #         filter_condition & WPReserve.reserve_is_deleted == 0
-    #     )
-    #     if reserves.count() > 0:
-    #         places_ids = [x.place_id for x in reserves.all()]
-    #         place = session.query(WPPlace).filter(
-    #             ~WPPlace.ID.in_(places_ids)
-    #         ).first()
-
-    #     else:
-    #         place = session.query(WPPlace).first()
-
-    #     if not place:
-    #         return None
-
-    #     new_reserve = WPReserve(
-    #         reserve_begin=_begin,
-    #         reserve_end=_end,
-    #         place_id=place.ID,
-    #         user_id=user.ID,
-    #     )
-    #     if sql_add(new_reserve):
-    #         return place
-    # except Exception as e:
-    #     print("\n\nadd_reserve\n", e, "\n\n\n")
-    #     return None
 
 # Удаление резервации
 def delete_reserves(user: WPUser, places: list[WPPlace]):
