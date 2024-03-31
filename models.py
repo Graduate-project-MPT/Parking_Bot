@@ -18,11 +18,9 @@ Base.metadata.create_all(engine)
 Session = sessionmaker(bind=engine, expire_on_commit=False)
 session = Session()
 
-
 # Константы
 TELEGRAM_ID = "telegram_id"
 MESSAGE_ID = "message_id"
-
 
 # Класс пользователя
 class WPUser(Base):
@@ -40,7 +38,6 @@ class WPUser(Base):
 
     usermeta = relationship('WPUserMeta', back_populates='user')
 
-
 # Класс мета данных пользователя
 class WPUserMeta(Base):
     __tablename__ = 'wp_usermeta'
@@ -53,7 +50,6 @@ class WPUserMeta(Base):
                      ForeignKey('wp_user.ID'), nullable=False)
 
     user = relationship('WPUser', back_populates='usermeta')
-
 
 # Класс сообщений
 class WPMessage(Base):
@@ -71,7 +67,6 @@ class WPMessage(Base):
     user_id = Column(BigInteger,
                      ForeignKey('wp_user.ID'), nullable=True)
 
-
 # Класс документов
 class WPDocument(Base):
     __tablename__ = 'wp_document'
@@ -86,7 +81,6 @@ class WPDocument(Base):
     message_id = Column(BigInteger,
                         ForeignKey('wp_message.ID'), nullable=False)
 
-
 # Класс парковочных мест
 class WPPlace(Base):
     __tablename__ = 'wp_place'
@@ -96,7 +90,6 @@ class WPPlace(Base):
     place_code = Column(String(4), nullable=False)
 
     reserve = relationship('WPReserve', back_populates='place')
-
 
 # Класс резервации парковочных мест
 class WPReserve(Base):
@@ -128,7 +121,6 @@ def sql_add(data):
         print("\n\nsql_add\n", e, "\n\n\n")
         return False
 
-
 # Удаляет запись бд
 def remove_row(data):
     session.delete(data)
@@ -148,12 +140,10 @@ def find_user_by_login(login: str):
         print("\n\n\n", e, "\n\n\n")
         return None
 
-
 # Возвращает парковочное место по его наименованию
 def find_place_by_code(place_code: str):
     filter_condition = (WPPlace.place_code == place_code)
     return session.query(WPPlace).filter(filter_condition).first()
-
 
 # Возвращает мета запись телеграм кода
 def find_usermeta_by_telegram_id(telegram_id: int):
@@ -161,7 +151,7 @@ def find_usermeta_by_telegram_id(telegram_id: int):
                         (WPUserMeta.user_meta_key == TELEGRAM_ID)
     return session.query(WPUserMeta).filter(filter_condition).first()
 
-
+# Возвращает запись пользователя авторизированного под данным кодом телеграма
 def find_user_by_telegram_id(telegram_id: int):
     meta = find_usermeta_by_telegram_id(telegram_id)
     if not meta:
@@ -170,11 +160,8 @@ def find_user_by_telegram_id(telegram_id: int):
               WPUser.ID == meta.user_id
            ).first()
 
-
-# Возвращает актуальные резервации
-# по телеграм коду авторизированного подльзователя
-def find_actual_reserves(user: WPUser,
-                         is_deleted: bool = False):
+# Возвращает актуальные резервации по телеграм коду авторизированного подльзователя
+def find_actual_reserves(user: WPUser, is_deleted: bool = False):
     try:
         actual_timestamp = datetime.now().timestamp()
         filter_condition = (WPReserve.user_id == user.ID) & \
@@ -184,14 +171,11 @@ def find_actual_reserves(user: WPUser,
     except Exception as e:
         print("\n\nget_actual\n", e, "\n\n\n")
 
-
 # Возвращает все резервации по телеграм коду авторизированного подльзователя
-def find_reserves(user: WPUser,
-                  is_deleted: bool = False):
+def find_reserves(user: WPUser, is_deleted: bool = False):
     filter_condition = (WPReserve.user_id == user.ID) & \
                         (WPReserve.reserve_is_deleted == is_deleted)
     return session.query(WPReserve).filter(filter_condition).all()
-
 
 # Возвращает место по его коду
 def find_place_by_id(place_id: int):
@@ -202,10 +186,8 @@ def find_place_by_id(place_id: int):
     session.close()
     return place
 
-
 # Возвращение записи сообщении по его коду сообщени телеграма
-def find_message_by_id(message_id: int,
-                       is_bot: bool):
+def find_message_by_id(message_id: int, is_bot: bool):
     try:
         mess = session.query(WPMessage).filter(
             WPMessage.message_telegram_id == message_id
@@ -220,9 +202,8 @@ def find_message_by_id(message_id: int,
     except Exception as e:
         return None
 
-
-def find_bot_message_by_id(message_id: int,
-                           is_bot: bool):
+# Находит запись сообщение по коду сообщения отправленного ботом
+def find_bot_message_by_id(message_id: int, is_bot: bool):
     try:
         mess = session.query(WPMessage).filter(
             WPMessage.message_bot_telegram_id == message_id
@@ -237,8 +218,7 @@ def find_bot_message_by_id(message_id: int,
     except Exception as e:
         return None
 
-
-#
+# Находит запись сообщение по коду сообщения отправленного пользователем
 def find_message_by_user_id(user_id: int):
     try:
         query = (
@@ -250,17 +230,14 @@ def find_message_by_user_id(user_id: int):
     except Exception as e:
         return None
 
-
 #
 def find_user_message_id(user_id: int):
     return session.query(WPUserMeta).filter(
         WPUserMeta.user_id == user_id
     ).first().user_message_id
 
-
 # Проерка авторизирован ли пользователь под данным телеграм кодом
-def is_telegram_id_set(user: WPUser,
-                       telegram_id: int):
+def is_telegram_id_set(user: WPUser, telegram_id: int):
     usermeta = session.query(WPUserMeta).filter_by(
         user_id=user.ID, user_meta_key=TELEGRAM_ID
     ).first()
@@ -273,8 +250,7 @@ def is_telegram_id_set(user: WPUser,
 # Запросы изменений
 # Создание резервации места на парковке
 # (Если вернет False резервация не удалась)
-def add_reserves(user: WPUser,
-                 hours_count: int):
+def add_reserves(user: WPUser, hours_count: int):
     try:
         now = datetime.now()
         _begin = now.timestamp()
@@ -311,10 +287,8 @@ def add_reserves(user: WPUser,
         print("\n\nadd_reserve\n", e, "\n\n\n")
         return None
 
-
 # Удаление резервации
-def delete_reserves(user: WPUser,
-                    place: WPPlace):
+def delete_reserves(user: WPUser, place: WPPlace):
     filter_condition = (WPReserve.reserve_end > datetime.now().timestamp()) & \
                        (WPReserve.user_id == user.ID) & \
                        (WPReserve.place_id == place.ID) & \
@@ -327,10 +301,8 @@ def delete_reserves(user: WPUser,
         return True
     return False
 
-
 # Сохранение телеграм кода пользователя как авторизированного
-def save_telegram_id(user: WPUser,
-                     telegram_id: int):
+def save_telegram_id(user: WPUser, telegram_id: int):
     filter_condition = (WPUserMeta.user_id == user.ID) & \
                        (WPUserMeta.user_meta_key == TELEGRAM_ID)
     usermeta = session.query(WPUserMeta).filter(filter_condition).first()
@@ -347,12 +319,8 @@ def save_telegram_id(user: WPUser,
 
     session.close()
 
-
 # Сохранение сообщения в базе данных
-def save_user_message(my_message: Message,
-                      bot_message: Message,
-                      user_id: int,
-                      answer_id: Optional[int]):
+def save_user_message(my_message: Message, bot_message: Message, user_id: int, answer_id: Optional[int]):
     try:
         db_message = WPMessage(
             message_date=my_message.date.utcnow().timestamp(),
@@ -369,7 +337,6 @@ def save_user_message(my_message: Message,
     except Exception as e:
         print(e)
         return None
-
 
 def save_file(file: WPDocument):
     sql_add(file)

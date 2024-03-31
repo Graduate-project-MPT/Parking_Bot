@@ -17,9 +17,7 @@ from models import WPReserve, WPDocument, \
 import bcrypt
 import io
 
-
 router = Router(name=__name__)
-
 
 # Создание ответа с выводом списка резерваций
 def get_reserves_list(reserves: Optional[List[WPReserve]]):
@@ -28,23 +26,15 @@ def get_reserves_list(reserves: Optional[List[WPReserve]]):
     line = "<b>Список резерваций</b>\n\n"
     line += "<b>Парковочное место     Временной промежуток</b>\n"
     for reserve in reserves:
-        date_begin = datetime.fromtimestamp(reserve.reserve_begin).strftime(
-            "%m/%d/%Y, %H:%M:%S"
-        )
-        date_end = datetime.fromtimestamp(reserve.reserve_end).strftime(
-            "%m/%d/%Y, %H:%M:%S"
-        )
-        line += f"                 <b>{reserve.place.place_code}</b>" \
-                f"{date_begin} / {date_end}\n"
+        date_begin = datetime.fromtimestamp(reserve.reserve_begin).strftime("%m/%d/%Y, %H:%M:%S")
+        date_end = datetime.fromtimestamp(reserve.reserve_end).strftime("%m/%d/%Y, %H:%M:%S")
+        line += f"                 <b>{reserve.place.place_code}</b>                {date_begin} / {date_end}\n"
     return line
 
 
 # Запросы авторизации
 # Запрос на автризацию
-@router.message(Command(BotCommand(
-                        command="login",
-                        description="Авторизация")
-                        ),
+@router.message(Command(BotCommand(command="login", description="Авторизация")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_login_handler(message: Message) -> None:
     try:
@@ -64,10 +54,7 @@ async def command_login_handler(message: Message) -> None:
         await message.reply("Вы уже авторизованы на этом аккаунте.")
         return
 
-    if user and bcrypt.checkpw(
-                    password.encode('utf-8'),
-                    user.user_pass.encode("utf-8")
-                ):
+    if user and bcrypt.checkpw(password.encode('utf-8'), user.user_pass.encode("utf-8")):
         save_telegram_id(user, message.from_user.id)
         await message.reply("Вход выполнен успешно!")
         await settings.bot.send_message(
@@ -86,12 +73,8 @@ async def command_login_handler(message: Message) -> None:
     else:
         await message.reply("Неверный логин или пароль.")
 
-
 # Запрос на выход из аккаунта
-@router.message(Command(BotCommand(
-                        command="exit",
-                        description="Выход")
-                        ),
+@router.message(Command(BotCommand(command="exit", description="Выход")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_login_handler(message: Message) -> None:
     user = find_user_by_telegram_id(message.from_user.id)
@@ -105,10 +88,7 @@ async def command_login_handler(message: Message) -> None:
 
 # Запросы на резервирование
 # Получение списка актуальных резерваций парковочных мест
-@router.message(Command(BotCommand(
-                        command="reserve_list",
-                        description="Список резерваций")
-                        ),
+@router.message(Command(BotCommand(command="reserve_list", description="Список резерваций")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_get_actual_reserves(message: Message) -> None:
     user = find_user_by_telegram_id(message.from_user.id)
@@ -125,12 +105,8 @@ async def command_get_actual_reserves(message: Message) -> None:
         parse_mode=ParseMode.HTML
     )
 
-
 # Получение списка всех резерваций парковочных мест
-@router.message(Command(BotCommand(
-                        command="reserve_history",
-                        description="История резерваций")
-                        ),
+@router.message(Command(BotCommand(command="reserve_history", description="История резерваций")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_get_reserves(message: Message) -> None:
     user = find_user_by_telegram_id(message.from_user.id)
@@ -143,72 +119,66 @@ async def command_get_reserves(message: Message) -> None:
     reserves = find_reserves(user)
     await message.answer(
         get_reserves_list(reserves),
-        parse_mode=ParseMode.HTML)
-
+        parse_mode=ParseMode.HTML
+    )
 
 # Добавление новой резервации
-@router.message(Command(BotCommand(
-                        command="reserve_add",
-                        description="Добавить резервацию")
-                        ),
+@router.message(Command(BotCommand(command="reserve_add", description="Добавить резервацию")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_get_reserves(message: Message) -> None:
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
         return
 
     try:
         _, hours_count = message.text.split(' ')
         hours_count = int(hours_count)
     except Exception:
-        await message.reply(
-            "Неверный формат команды. "
-            "(Используйте: /reserve_add Количество_часов_резервации)")
+        await message.reply("Неверный формат команды. (Используйте: /reserve_add Количество_часов_резервации)")
         return
     place = add_reserves(user, hours_count)
     if place:
         await message.answer(
-            f"Резервация прошла <b>успешно</b>\n"
-            f"Ваше парковочное место - {place.place_code}",
-            parse_mode=ParseMode.HTML)
+            f"Резервация прошла <b>успешно</b>\n    Ваше парковочное место - {place.place_code}",
+            parse_mode=ParseMode.HTML
+        )
     else:
         await message.answer(
             "<b>Резервация провалилась</b>",
-            parse_mode=ParseMode.HTML)
-
+            parse_mode=ParseMode.HTML
+        )
 
 # Удаление актуальной резервации
-@router.message(Command(BotCommand(
-                        command="reserve_delete",
-                        description="Удаление резервацию")
-                        ),
+@router.message(Command(BotCommand(command="reserve_delete", description="Удаление резервацию")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_get_reserves(message: Message) -> None:
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
         return
 
     try:
         _, place_code = message.text.split(' ')
     except Exception:
-        await message.reply(
-            "Неверный формат команды. "
-            "(Используйте: /reserve_delete Код_парковочного_места)")
+        await message.reply("Неверный формат команды. (Используйте: /reserve_delete Код_парковочного_места)")
         return
     if delete_reserves(user, find_place_by_code(place_code)):
         await message.answer(
             "<b>Резервация удалена</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
     else:
         await message.answer(
             "<b>Удалить резервацию не удалось!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
 
 
 # Запросы на техническую помощь
@@ -219,7 +189,8 @@ async def photo_handler(message: types.Message, state: FSMContext):
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
         return
 
     message_db = find_message_by_user_id(user.ID)
@@ -234,8 +205,7 @@ async def photo_handler(message: types.Message, state: FSMContext):
     if message.caption is not None:
         bot_message = await settings.bot.send_message(
             chat_id=settings.GROUP_ID,
-            text=f"[Данные пользователя:]"
-                 f"(https://t.me/{message.from_user.username})\n"
+            text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
                  f"От: `{user.user_nicename}`\n"
                  f"email: `{user.user_email}`\n\n"
                  f"Текст сообщения:\n"
@@ -260,8 +230,7 @@ async def photo_handler(message: types.Message, state: FSMContext):
     await settings.bot.send_photo(
         chat_id=settings.GROUP_ID,
         reply_to_message_id=message_db.message_bot_telegram_id,
-        caption=f"[Данные пользователя:]"
-                f"(https://t.me/{message.from_user.username})\n"
+        caption=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
                 f"От: `{user.user_nicename}`\n"
                 f"email: `{user.user_email}`\n\n",
         parse_mode=ParseMode.MARKDOWN_V2,
@@ -272,14 +241,14 @@ async def photo_handler(message: types.Message, state: FSMContext):
 
     await state.set_state('next_photo')
 
-
 @router.message(F.document, ChatTypeFilter(chat_type=["private"]))
 async def document_handler(message: types.Message):
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
         return
 
     message_db = find_message_by_user_id(user.ID)
@@ -294,8 +263,7 @@ async def document_handler(message: types.Message):
     if message.caption is not None:
         bot_message = await settings.bot.send_message(
             chat_id=settings.GROUP_ID,
-            text=f"[Данные пользователя:]"
-                 f"(https://t.me/{message.from_user.username})\n"
+            text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
                  f"От: `{user.user_nicename}`\n"
                  f"email: `{user.user_email}`\n\n"
                  f"Текст сообщения:\n"
@@ -329,7 +297,6 @@ async def document_handler(message: types.Message):
         document=BufferedInputFile(file_bytes, filename=document.file_name),
     )
 
-
 @router.message(ChatTypeFilter(chat_type=["private"]))
 async def private_message(message: Message) -> None:
     user = find_user_by_telegram_id(message.from_user.id)
@@ -346,8 +313,7 @@ async def private_message(message: Message) -> None:
             if find_message_by_id(replied_message_id, True):
                 bot_message = await settings.bot.send_message(
                     chat_id=settings.GROUP_ID,
-                    text=f"[Данные пользователя:]"
-                         f"(https://t.me/{message.from_user.username})\n"
+                    text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
                          f"От: `{user.user_nicename}`\n"
                          f"email: `{user.user_email}`\n\n"
                          f"Текст сообщения:\n"
@@ -355,11 +321,7 @@ async def private_message(message: Message) -> None:
                     parse_mode=ParseMode.MARKDOWN_V2,
                     disable_web_page_preview=True
                 )
-                save_user_message(
-                    message,
-                    bot_message,
-                    user.ID,
-                    replied_message_id)
+                save_user_message(message, bot_message, user.ID, replied_message_id)
                 return
 
     bot_message = await settings.bot.send_message(

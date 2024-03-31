@@ -6,21 +6,18 @@ from aiogram.enums import ChatAction, ParseMode
 from models import save_user_message, find_bot_message_by_id
 from config import settings
 
-
 router = Router(name=__name__)
-
 
 @router.message(ChatTypeFilter(chat_type=["group", "supergroup"]))
 async def group_message(message: types.Message) -> None:
     try:
         if message.reply_to_message:
             bot_mess = message.reply_to_message
-            print("\n\n\n1\n\n\n")
             replied_message = find_bot_message_by_id(
                 bot_mess.message_id,
-                False)
+                False
+            )
             if replied_message:
-                print("\n\n\n2\n\n\n")
                 bot_message = await settings.bot.send_message(
                     chat_id=replied_message.message_user_telegram_id,
                     reply_to_message_id=replied_message.message_telegram_id,
@@ -35,6 +32,5 @@ async def group_message(message: types.Message) -> None:
                     replied_message.message_telegram_id
                 )
                 return
-    except Exception as e:
-        print(e)
+    except Exception:
         await message.answer(f"Nice try!")
