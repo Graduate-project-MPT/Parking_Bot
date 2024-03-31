@@ -3,7 +3,6 @@ from aiogram.enums import ChatAction
 import re
 from filters.chat_type_filter import ChatTypeFilter
 from aiogram.enums import ChatAction, ParseMode
-
 from models import WPReserve, WPDocument, \
     find_user_by_login, save_telegram_id, is_telegram_id_set, \
     find_user_by_telegram_id, find_usermeta_by_telegram_id, find_actual_reserves, \
@@ -11,8 +10,8 @@ from models import WPReserve, WPDocument, \
     add_reserves, delete_reserves, find_place_by_code, \
     find_message_by_id, save_user_message, find_bot_message_by_id, find_message_by_user_id, \
     save_file
-
 from config import settings
+
 
 router = Router(name=__name__)
 
