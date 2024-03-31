@@ -1,6 +1,6 @@
 from sqlalchemy import create_engine, Column, Integer, Boolean, \
                        String, Text, BigInteger, ForeignKey, \
-                       TIMESTAMP, select, desc
+                       TIMESTAMP, select, desc, BooleanClauseList
 from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
 from datetime import timedelta, datetime
@@ -122,181 +122,204 @@ def sql_add(data):
         return False
 
 # Удаляет запись бд
-def remove_row(data):
-    session.delete(data)
-    session.commit()
+def sql_delete(data):
+    try:
+        session.delete(data)
+        session.commit()
+        session.close()
+    except Exception as e:
+        print("\n\sql_delete\n", e, "\n\n\n")
 
+def sql_query(class_example, filter_condition: BooleanClauseList):
+    try:
+        query_result = session.query(class_example).filter(filter_condition)
+        session.close()
+        return (query_result)
+    except Exception as e:
+        print("\n\sql_delete\n", e, "\n\n\n")
+        return None
 
 # Запросы
 # Возвращает запись пользователя по его логину
 def find_user_by_login(login: str):
-    try:
-        user = session.query(WPUser).filter(
-            WPUser.user_login == login
-        ).first()
-        session.close()
-        return user
-    except Exception as e:
-        print("\n\n\n", e, "\n\n\n")
-        return None
+    user = sql_query(WPUser, (WPUser.user_login == login))
+    return user.first()
 
 # Возвращает парковочное место по его наименованию
-def find_place_by_code(place_code: str):
-    filter_condition = (WPPlace.place_code == place_code)
-    return session.query(WPPlace).filter(filter_condition).first()
+def find_places_by_code(place_code: list[str]):
+    filter_condition = (WPPlace.place_code.in_(place_code))
+    return sql_query(WPPlace, filter_condition).all()
 
 # Возвращает мета запись телеграм кода
 def find_usermeta_by_telegram_id(telegram_id: int):
     filter_condition = (WPUserMeta.user_meta_value == telegram_id) & \
                         (WPUserMeta.user_meta_key == TELEGRAM_ID)
-    return session.query(WPUserMeta).filter(filter_condition).first()
+    return sql_query(WPUserMeta, filter_condition).first()
 
 # Возвращает запись пользователя авторизированного под данным кодом телеграма
 def find_user_by_telegram_id(telegram_id: int):
     meta = find_usermeta_by_telegram_id(telegram_id)
-    if not meta:
-        return None
-    return session.query(WPUser).filter(
-              WPUser.ID == meta.user_id
-           ).first()
+    if meta:
+        return sql_query(WPUser, (WPUser.ID == meta.user_id)).first()
+    return None
 
 # Возвращает актуальные резервации по телеграм коду авторизированного подльзователя
 def find_actual_reserves(user: WPUser, is_deleted: bool = False):
-    try:
-        actual_timestamp = datetime.now().timestamp()
-        filter_condition = (WPReserve.user_id == user.ID) & \
-                           (WPReserve.reserve_end > actual_timestamp) & \
-                           (WPReserve.reserve_is_deleted == is_deleted)
-        return session.query(WPReserve).filter(filter_condition).all()
-    except Exception as e:
-        print("\n\nget_actual\n", e, "\n\n\n")
+    actual_timestamp = datetime.now().timestamp()
+    filter_condition = (WPReserve.user_id == user.ID) & \
+                        (WPReserve.reserve_end > actual_timestamp) & \
+                        (WPReserve.reserve_is_deleted == is_deleted)
+    return sql_query(WPReserve, filter_condition).all()
 
 # Возвращает все резервации по телеграм коду авторизированного подльзователя
 def find_reserves(user: WPUser, is_deleted: bool = False):
     filter_condition = (WPReserve.user_id == user.ID) & \
                         (WPReserve.reserve_is_deleted == is_deleted)
-    return session.query(WPReserve).filter(filter_condition).all()
+    return sql_query(WPReserve, filter_condition).all()
 
 # Возвращает место по его коду
 def find_place_by_id(place_id: int):
     filter_condition = (WPPlace.ID == place_id)
-    place = session.query(WPPlace).filter_by(
-        filter_condition
-    ).first()
-    session.close()
-    return place
+    return sql_query(WPPlace, filter_condition).first()
 
 # Возвращение записи сообщении по его коду сообщени телеграма
 def find_message_by_id(message_id: int, is_bot: bool):
-    try:
-        mess = session.query(WPMessage).filter(
-            WPMessage.message_telegram_id == message_id
-        )
-        if is_bot:
-            mess = mess.filter(not WPMessage.user_id).first()
-        else:
-            mess = mess.filter(WPMessage.user_id).first()
-
-        session.close()
-        return mess
-    except Exception as e:
-        return None
+    filter_condition = (WPMessage.message_telegram_id == message_id) & \
+                       ((not WPMessage.user_id) if is_bot else (WPMessage.user_id))
+    return sql_query(WPMessage, filter_condition).first()
+    # mess = sql_query(WPMessage, (WPMessage.message_telegram_id == message_id))
+    # if is_bot:
+    #     mess = mess.filter(not WPMessage.user_id).first()
+    # else:
+    #     mess = mess.filter(WPMessage.user_id).first()
+    # return mess
 
 # Находит запись сообщение по коду сообщения отправленного ботом
-def find_bot_message_by_id(message_id: int, is_bot: bool):
-    try:
-        mess = session.query(WPMessage).filter(
-            WPMessage.message_bot_telegram_id == message_id
-        )
-        if is_bot:
-            mess = mess.filter(not WPMessage.user_id).first()
-        else:
-            mess = mess.filter(WPMessage.user_id).first()
+def find_bot_message_by_id(message_bot_id: int, is_bot: bool):
+    filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & \
+                       ((not WPMessage.user_id) if is_bot else (WPMessage.user_id))
+    return sql_query(WPMessage, filter_condition).first()
+    # try:
+    #     mess = session.query(WPMessage).filter(
+    #         WPMessage.message_bot_telegram_id == message_id
+    #     )
+    #     if is_bot:
+    #         mess = mess.filter(not WPMessage.user_id).first()
+    #     else:
+    #         mess = mess.filter(WPMessage.user_id).first()
 
-        session.close()
-        return mess
-    except Exception as e:
-        return None
+    #     session.close()
+    #     return mess
+    # except Exception as e:
+    #     return None
 
 # Находит запись сообщение по коду сообщения отправленного пользователем
 def find_message_by_user_id(user_id: int):
-    try:
-        query = (
-            select(WPMessage)
-            .order_by(desc(WPMessage.ID))
-            .where(WPMessage.user_id == user_id)
-        )
-        return session.scalars(query).first()
-    except Exception as e:
-        return None
+    filter_condition = (WPMessage.user_id == user_id)
+    return sql_query(WPMessage, filter_condition).order_by(desc(WPMessage.ID))
+    # try:
+    #     query = (
+    #         select(WPMessage)
+    #         .order_by(desc(WPMessage.ID))
+    #         .where(WPMessage.user_id == user_id)
+    #     )
+    #     return session.scalars(query).first()
+    # except Exception as e:
+    #     return None
 
 #
 def find_user_message_id(user_id: int):
-    return session.query(WPUserMeta).filter(
-        WPUserMeta.user_id == user_id
-    ).first().user_message_id
+    return sql_query(WPUserMeta, (WPUserMeta.user_id == user_id)).first()
+    # return session.query(WPUserMeta).filter(
+    #     WPUserMeta.user_id == user_id
+    # ).first().user_message_id
 
 # Проерка авторизирован ли пользователь под данным телеграм кодом
 def is_telegram_id_set(user: WPUser, telegram_id: int):
-    usermeta = session.query(WPUserMeta).filter_by(
-        user_id=user.ID, user_meta_key=TELEGRAM_ID
-    ).first()
-    session.close()
-    if usermeta and int(usermeta.user_meta_value) == telegram_id:
-        return True
-    return False
+    filter_condition = (WPUserMeta.user_id == user.ID & WPUserMeta.user_meta_key == TELEGRAM_ID)
+    return sql_query(WPUserMeta, filter_condition).first()
+    # usermeta = session.query(WPUserMeta).filter_by(
+    #     user_id=user.ID, user_meta_key=TELEGRAM_ID
+    # ).first()
+    # session.close()
+    # if usermeta and int(usermeta.user_meta_value) == telegram_id:
+    #     return True
+    # return False
 
 
 # Запросы изменений
 # Создание резервации места на парковке
 # (Если вернет False резервация не удалась)
 def add_reserves(user: WPUser, hours_count: int):
-    try:
-        now = datetime.now()
-        _begin = now.timestamp()
-        _end = (now + timedelta(hours=hours_count)).timestamp()
-        filter_condition = \
-            (WPReserve.reserve_begin.between(_begin, _end)) | \
-            (WPReserve.reserve_end.between(_begin, _end))
-
-        reserves = session.query(WPReserve).filter(
-            filter_condition & WPReserve.reserve_is_deleted == 0
-        )
-        if reserves.count() > 0:
-            places_ids = [x.place_id for x in reserves.all()]
-            place = session.query(WPPlace).filter(
-                ~WPPlace.ID.in_(places_ids)
-            ).first()
-            print("\n\nPlace = ", place.place_code, "\n\n")
-
-        else:
-            place = session.query(WPPlace).first()
-
-        if not place:
-            return None
-
-        new_reserve = WPReserve(
-            reserve_begin=_begin,
-            reserve_end=_end,
-            place_id=place.ID,
-            user_id=user.ID,
-        )
-        if sql_add(new_reserve):
-            return place
-    except Exception as e:
-        print("\n\nadd_reserve\n", e, "\n\n\n")
+    now = datetime.now()
+    timestamp_begin = now.timestamp()
+    timestamp_end = (now + timedelta(hours=hours_count)).timestamp()
+    filter_condition_reserve = (WPReserve.reserve_begin.between(timestamp_begin, timestamp_end)) | \
+                       (WPReserve.reserve_end.between(timestamp_begin, timestamp_end))
+    reserves = sql_query(WPReserve, filter_condition_reserve)
+    if reserves.count() > 0:
+        filter_condition_place = (not WPPlace.ID.in_([x.place_id for x in reserves.all()]))
+        place: WPPlace = sql_query(WPPlace, filter_condition_place).first()
+    else:
+        place: WPPlace = sql_query(WPPlace, (True)).first()
+    if not place:
         return None
 
+    new_reserve = WPReserve(
+        reserve_begin=timestamp_begin,
+        reserve_end=timestamp_end,
+        place_id=place.ID,
+        user_id=user.ID,
+    )
+    if sql_add(new_reserve):
+        return place
+    # try:
+    #     now = datetime.now()
+    #     _begin = now.timestamp()
+    #     _end = (now + timedelta(hours=hours_count)).timestamp()
+    #     filter_condition = \
+    #         (WPReserve.reserve_begin.between(_begin, _end)) | \
+    #         (WPReserve.reserve_end.between(_begin, _end))
+
+    #     reserves = session.query(WPReserve).filter(
+    #         filter_condition & WPReserve.reserve_is_deleted == 0
+    #     )
+    #     if reserves.count() > 0:
+    #         places_ids = [x.place_id for x in reserves.all()]
+    #         place = session.query(WPPlace).filter(
+    #             ~WPPlace.ID.in_(places_ids)
+    #         ).first()
+
+    #     else:
+    #         place = session.query(WPPlace).first()
+
+    #     if not place:
+    #         return None
+
+    #     new_reserve = WPReserve(
+    #         reserve_begin=_begin,
+    #         reserve_end=_end,
+    #         place_id=place.ID,
+    #         user_id=user.ID,
+    #     )
+    #     if sql_add(new_reserve):
+    #         return place
+    # except Exception as e:
+    #     print("\n\nadd_reserve\n", e, "\n\n\n")
+    #     return None
+
 # Удаление резервации
-def delete_reserves(user: WPUser, place: WPPlace):
+def delete_reserves(user: WPUser, places: list[WPPlace]):
     filter_condition = (WPReserve.reserve_end > datetime.now().timestamp()) & \
                        (WPReserve.user_id == user.ID) & \
-                       (WPReserve.place_id == place.ID) & \
+                       (WPReserve.place_id == [place.ID for place in places]) & \
                        (not WPReserve.reserve_is_deleted)
-    reserve = session.query(WPReserve).filter(filter_condition).first()
+    reserves = sql_query(WPReserve, filter_condition)
 
-    if reserve:
-        remove_row(reserve)
+    if reserves.count() > 0:
+        for reserve in reserves.all():
+            reserve.reserve_is_deleted = True
+        session.commit()
         session.close()
         return True
     return False
@@ -305,7 +328,7 @@ def delete_reserves(user: WPUser, place: WPPlace):
 def save_telegram_id(user: WPUser, telegram_id: int):
     filter_condition = (WPUserMeta.user_id == user.ID) & \
                        (WPUserMeta.user_meta_key == TELEGRAM_ID)
-    usermeta = session.query(WPUserMeta).filter(filter_condition).first()
+    usermeta = sql_query(WPUserMeta, filter_condition).first()
 
     if usermeta:
         usermeta.user_meta_value = telegram_id
@@ -314,29 +337,21 @@ def save_telegram_id(user: WPUser, telegram_id: int):
                               user_meta_key=TELEGRAM_ID,
                               user_meta_value=telegram_id)
         session.add(usermeta)
-
     session.commit()
-
     session.close()
 
 # Сохранение сообщения в базе данных
 def save_user_message(my_message: Message, bot_message: Message, user_id: int, answer_id: Optional[int]):
-    try:
-        db_message = WPMessage(
-            message_date=my_message.date.utcnow().timestamp(),
-            message_user_telegram_id=my_message.from_user.id,
-            message_bot_telegram_id=bot_message.message_id,
-            message_telegram_id=my_message.message_id,
-            message_text=my_message.text,
-            message_answer_id=answer_id,
-            user_id=user_id
-        )
-        session.add(db_message)
-        session.commit()
-        session.close()
-    except Exception as e:
-        print(e)
-        return None
+    db_message = WPMessage(
+        message_date=my_message.date.utcnow().timestamp(),
+        message_user_telegram_id=my_message.from_user.id,
+        message_bot_telegram_id=bot_message.message_id,
+        message_telegram_id=my_message.message_id,
+        message_text=my_message.text,
+        message_answer_id=answer_id,
+        user_id=user_id
+    )
+    sql_add(db_message)
 
 def save_file(file: WPDocument):
     sql_add(file)

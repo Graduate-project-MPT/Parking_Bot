@@ -40,10 +40,7 @@ async def command_login_handler(message: Message) -> None:
     try:
         _, login, password = message.text.split(' ')
     except ValueError:
-        await message.reply(
-            "Неверный формат команды."
-            "(Используйте: /login Логин Пароль)"
-        )
+        await message.reply("Неверный формат команды. (Используйте: /login Логин Пароль)")
         return
 
     user = find_user_by_login(login)
@@ -113,7 +110,8 @@ async def command_get_reserves(message: Message) -> None:
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML
+        )
         return
 
     reserves = find_reserves(user)

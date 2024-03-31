@@ -4,6 +4,7 @@ from routers import router as main_router
 import asyncio
 import logging
 
+
 async def main():
     dp = Dispatcher()
     dp.include_router(main_router)

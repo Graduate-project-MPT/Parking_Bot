@@ -10,7 +10,7 @@ class Settings:
     GROUP_ID: str = os.getenv('GROUP_ID')
     ADMIN_ID: int = int(os.getenv('ADMIN_ID'))
     TOKEN_API: str = os.getenv('TOKEN_API')
-    DEV_TOKEN_API: str = os.getenv('DEV_TOKEN_API')
+    DEV_TOKEN_API: str = os.getenv('TOKEN_API_DEV')
 
     bot = Bot(
         token=TOKEN_API,
