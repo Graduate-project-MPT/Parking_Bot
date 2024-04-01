@@ -3,17 +3,19 @@ from aiogram.filters import Command
 from aiogram.enums import ParseMode
 from aiogram.types import Message, BotCommand, BufferedInputFile
 from aiogram.fsm.context import FSMContext
-from typing import Optional, List
 from filters.chat_type_filter import ChatTypeFilter
-from config import settings
+from typing import Optional, List
 from datetime import datetime
+from config import settings
 from models import WPReserve, WPDocument, \
     find_user_by_login, save_telegram_id, is_telegram_id_set, \
     find_user_by_telegram_id, find_usermeta_by_telegram_id, \
-    find_actual_reserves, find_reserves, remove_row, \
-    add_reserves, delete_reserves, find_place_by_code, \
+    find_actual_reserves, find_reserves, sql_delete, \
+    add_reserves, delete_reserves, find_places_by_code, \
     find_message_by_id, save_user_message, find_message_by_user_id, \
-    save_file
+    save_file, find_bot_message_by_id
+from routers.commands.markup import get_auth_markup, get_no_auth_markup
+from aiogram.types import ReplyKeyboardMarkup
 import bcrypt
 import io
 
@@ -31,33 +33,48 @@ def get_reserves_list(reserves: Optional[List[WPReserve]]):
         line += f"                 <b>{reserve.place.place_code}</b>                {date_begin} / {date_end}\n"
     return line
 
+def get_begin_message_id(message: Message):
+    return 1
+
 
 # Запросы авторизации
 # Запрос на автризацию
 @router.message(Command(BotCommand(command="login", description="Авторизация")),
                 ChatTypeFilter(chat_type=["private"]))
-async def command_login_handler(message: Message) -> None:
+async def command_login_handler(message: Message):
     try:
         _, login, password = message.text.split(' ')
     except ValueError:
-        await message.reply("Неверный формат команды. (Используйте: /login Логин Пароль)")
+        await message.reply(
+            "Неверный формат команды. (Используйте: /login Логин Пароль)",
+            reply_markup=get_no_auth_markup()  
+        )
         return
 
     user = find_user_by_login(login)
     if not user:
-        await message.reply("Пользователь с таким логином не существует.")
+        await message.reply(
+            "Пользователь с таким логином не существует.",
+            reply_markup=get_no_auth_markup()  
+        )
         return
     if is_telegram_id_set(user, message.from_user.id):
-        await message.reply("Вы уже авторизованы на этом аккаунте.")
+        await message.reply(
+            "Вы уже авторизованы на этом аккаунте.",
+            reply_markup=get_auth_markup()  
+        )
         return
 
     if user and bcrypt.checkpw(password.encode('utf-8'), user.user_pass.encode("utf-8")):
         save_telegram_id(user, message.from_user.id)
-        await message.reply("Вход выполнен успешно!")
+        await message.reply(
+            "Вход выполнен успешно!",
+            reply_markup=get_auth_markup()  
+        )
         await settings.bot.send_message(
             chat_id=settings.GROUP_ID,
-            text=f"Пользователь {login} зашёл в аккаунт под телеграмм логином "
-                 f"{message.from_user.username}"
+            text=f"Пользователь {login} зашёл в аккаунт под телеграмм логином {message.from_user.username}",
+            reply_markup=get_no_auth_markup()
         )
         meta = find_usermeta_by_telegram_id(message.from_user.id)
         if meta and meta.user_meta_value != str(message.from_user.id):
@@ -66,20 +83,29 @@ async def command_login_handler(message: Message) -> None:
                 text=f"В ваш аккаунт зашёл другой человек, "
                      f"вы больше не авторизованы. 🙂",
             )
-            remove_row(meta)
+            sql_delete(meta)
     else:
-        await message.reply("Неверный логин или пароль.")
+        await message.reply(
+            "Неверный логин или пароль.",
+            reply_markup=get_no_auth_markup()  
+        )
 
 # Запрос на выход из аккаунта
 @router.message(Command(BotCommand(command="exit", description="Выход")),
                 ChatTypeFilter(chat_type=["private"]))
-async def command_login_handler(message: Message) -> None:
-    user = find_user_by_telegram_id(message.from_user.id)
-    if user:
-        remove_row(user)
-        await message.answer("Вы вышли из аккаунта!")
+async def command_login_handler(message: Message):
+    user_meta = find_usermeta_by_telegram_id(message.from_user.id)
+    if user_meta:
+        sql_delete(user_meta)
+        await message.answer(
+            "Вы вышли из аккаунта!",
+            reply_markup=get_no_auth_markup()  
+        )
         return
-    await message.answer("Вы не были авторизованны!")
+    await message.answer(
+        "Вы не были авторизованны!",
+        reply_markup=get_no_auth_markup()  
+    )
     return
 
 
@@ -87,48 +113,53 @@ async def command_login_handler(message: Message) -> None:
 # Получение списка актуальных резерваций парковочных мест
 @router.message(Command(BotCommand(command="reserve_list", description="Список резерваций")),
                 ChatTypeFilter(chat_type=["private"]))
-async def command_get_actual_reserves(message: Message) -> None:
+async def command_get_actual_reserves(message: Message):
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
         )
         return
 
     reserves = find_actual_reserves(user, False)
     await message.answer(
         get_reserves_list(reserves),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_auth_markup()
     )
 
 # Получение списка всех резерваций парковочных мест
 @router.message(Command(BotCommand(command="reserve_history", description="История резерваций")),
                 ChatTypeFilter(chat_type=["private"]))
-async def command_get_reserves(message: Message) -> None:
+async def command_get_reserves(message: Message):
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
         )
         return
 
     reserves = find_reserves(user)
     await message.answer(
         get_reserves_list(reserves),
-        parse_mode=ParseMode.HTML
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_auth_markup()
     )
 
 # Добавление новой резервации
 @router.message(Command(BotCommand(command="reserve_add", description="Добавить резервацию")),
                 ChatTypeFilter(chat_type=["private"]))
-async def command_get_reserves(message: Message) -> None:
+async def command_get_reserves(message: Message):
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
-        message.answer(
+        await message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
         )
         return
 
@@ -136,46 +167,57 @@ async def command_get_reserves(message: Message) -> None:
         _, hours_count = message.text.split(' ')
         hours_count = int(hours_count)
     except Exception:
-        await message.reply("Неверный формат команды. (Используйте: /reserve_add Количество_часов_резервации)")
+        await message.reply(
+            "Неверный формат команды. (Используйте: /reserve_add Количество_часов_резервации)",
+            reply_markup=get_auth_markup()
+        )
         return
     place = add_reserves(user, hours_count)
     if place:
         await message.answer(
             f"Резервация прошла <b>успешно</b>\n    Ваше парковочное место - {place.place_code}",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_auth_markup()
         )
     else:
         await message.answer(
             "<b>Резервация провалилась</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_auth_markup()
         )
 
 # Удаление актуальной резервации
-@router.message(Command(BotCommand(command="reserve_delete", description="Удаление резервацию")),
+@router.message(Command(BotCommand(command="reserves_delete", description="Удаление резервацию")),
                 ChatTypeFilter(chat_type=["private"]))
-async def command_get_reserves(message: Message) -> None:
+async def command_get_reserves(message: Message):
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
         )
         return
 
     try:
-        _, place_code = message.text.split(' ')
+        places: list[str] = message.text.split(' ')
     except Exception:
-        await message.reply("Неверный формат команды. (Используйте: /reserve_delete Код_парковочного_места)")
+        await message.reply(
+            "Неверный формат команды. (Используйте: /reserve_delete Код_парковочного_места)",
+            reply_markup=get_auth_markup()
+        )
         return
-    if delete_reserves(user, find_place_by_code(place_code)):
+    if delete_reserves(user, find_places_by_code(places)):
         await message.answer(
             "<b>Резервация удалена</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_auth_markup()
         )
     else:
         await message.answer(
             "<b>Удалить резервацию не удалось!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_auth_markup()
         )
 
 
@@ -187,11 +229,10 @@ async def photo_handler(message: types.Message, state: FSMContext):
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
         )
         return
-
-    message_db = find_message_by_user_id(user.ID)
 
     photo = message.photo[-1]
     file_in_io = io.BytesIO()
@@ -213,6 +254,7 @@ async def photo_handler(message: types.Message, state: FSMContext):
         )
         save_user_message(message, bot_message, user, answer_id=None)
 
+    message_db = find_message_by_user_id(user.ID)
     if message_db is not None:
         wp_document = WPDocument(
             message_id=message_db.ID,
@@ -245,7 +287,8 @@ async def document_handler(message: types.Message):
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
         )
         return
 
@@ -296,18 +339,22 @@ async def document_handler(message: types.Message):
     )
 
 @router.message(ChatTypeFilter(chat_type=["private"]))
-async def private_message(message: Message) -> None:
+async def private_message(message: Message):
     user = find_user_by_telegram_id(message.from_user.id)
     if not user:
         message.answer(
             "<b>Вы не авторизированны!</b>",
-            parse_mode=ParseMode.HTML)
+            parse_mode=ParseMode.HTML,
+            reply_markup=get_no_auth_markup()
+        )
         return
 
     if message.reply_to_message:
         bot_mess = message.reply_to_message
-        if find_message_by_id(bot_mess.message_id):
+        print("\n\ntry find bot message\n\n")
+        if find_bot_message_by_id(bot_mess.message_id):
             replied_message_id = bot_mess.reply_to_message.message_id
+            print("\n\ntry find employee message\n\n")
             if find_message_by_id(replied_message_id, True):
                 bot_message = await settings.bot.send_message(
                     chat_id=settings.GROUP_ID,
@@ -321,6 +368,8 @@ async def private_message(message: Message) -> None:
                 )
                 save_user_message(message, bot_message, user.ID, replied_message_id)
                 return
+
+    print("\n\nJust simples\n\n")
 
     bot_message = await settings.bot.send_message(
         chat_id=settings.GROUP_ID,

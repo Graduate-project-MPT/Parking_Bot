@@ -29,7 +29,7 @@ async def group_message(message: types.Message) -> None:
                     message,
                     bot_message,
                     None,
-                    replied_message.message_telegram_id
+                    replied_message.ID
                 )
                 return
     except Exception:
