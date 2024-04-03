@@ -5,7 +5,6 @@ from sqlalchemy.orm import relationship, sessionmaker, declarative_base
 
 from datetime import timedelta, datetime
 from aiogram.types import Message
-from typing import Optional
 from config import settings
 import random
 
@@ -23,6 +22,7 @@ session = Session()
 TELEGRAM_ID = "telegram_id"
 MESSAGE_ID = "message_id"
 
+# region Классы
 # Класс пользователя
 class WPUser(Base):
     __tablename__ = 'wp_user'
@@ -108,10 +108,10 @@ class WPReserve(Base):
                      ForeignKey('wp_user.ID'), nullable=False)
 
     place = relationship('WPPlace', back_populates='reserve')
+#endregion
 
-
-# Редактирование данных
-# Добавляет запись в БД
+#region Редактирование данных
+# Добавляет запись
 def sql_add(data):
     try:
         session.add(data)
@@ -122,7 +122,7 @@ def sql_add(data):
         print("\n\nsql_add\n", e, "\n\n\n")
         return False
 
-# Удаляет запись бд
+# Удаляет запись
 def sql_delete(data):
     try:
         session.delete(data)
@@ -131,6 +131,7 @@ def sql_delete(data):
     except Exception as e:
         print("\n\sql_delete\n", e, "\n\n\n")
 
+# Получения записей
 def sql_query(class_example, filter_condition: BooleanClauseList):
     try:
         query_result = session.query(class_example).filter(filter_condition)
@@ -139,36 +140,46 @@ def sql_query(class_example, filter_condition: BooleanClauseList):
     except Exception as e:
         print("\n\sql_query\n", e, "\n\n\n")
         return None
+#endregion
 
-# Запросы
+#region Запросы получения
+    # region User
 # Возвращает запись пользователя по его логину
-def find_user_by_login(login: str) -> WPUser | None:
+def find_user_by_login(login: str):
     return sql_query(WPUser, (WPUser.user_login == login)).first()
 
-# Возвращает парковочное место по его наименованию
-def find_places_by_code(place_code: list[str]) -> list[WPPlace] | None:
-    filter_condition = (WPPlace.place_code.in_(place_code))
-    return sql_query(WPPlace, filter_condition).all()
-
 # Возвращает мета запись телеграм кода
-def find_usermeta_by_telegram_id(telegram_id: int) -> WPUserMeta | None:
+def find_usermeta_by_telegram_id(telegram_id: int):
     filter_condition = (WPUserMeta.user_meta_value == telegram_id) & \
                         (WPUserMeta.user_meta_key == TELEGRAM_ID)
     return sql_query(WPUserMeta, filter_condition).first()
 
 # Возвращает запись пользователя авторизированного под данным кодом телеграма
-def find_user_by_telegram_id(telegram_id: int) -> WPUser | None:
+def find_user_by_telegram_id(telegram_id: int):
     meta = find_usermeta_by_telegram_id(telegram_id)
     if meta:
-        print("\n\nmeta id = ", meta.ID, "\n\n")
         user = sql_query(WPUser, (WPUser.ID == meta.user_id)).first()
-        print("\n\nuser id = ")
         return user
-    print("\n\nmeta id = NONE\n\n")
     return None
 
+    # endregion
+
+    # region Place
+# Возвращает парковочное место по его наименованию
+def find_places_by_code(place_code: str):
+    filter_condition = (WPPlace.place_code == place_code)
+    return sql_query(WPPlace, filter_condition).first()
+
+# Возвращает место по его коду
+def find_place_by_id(place_id: int):
+    filter_condition = (WPPlace.ID == place_id)
+    return sql_query(WPPlace, filter_condition).first()
+
+    #  endregion
+
+    # region Reserve
 # Возвращает актуальные резервации по телеграм коду авторизированного подльзователя
-def find_actual_reserves(user: WPUser, is_deleted: bool = False) -> list[WPReserve] | None:
+def find_actual_reserves(user: WPUser, is_deleted: bool = False):
     actual_timestamp = datetime.now().timestamp()
     filter_condition = (WPReserve.user_id == user.ID) & \
                         (WPReserve.reserve_end > actual_timestamp) & \
@@ -176,18 +187,19 @@ def find_actual_reserves(user: WPUser, is_deleted: bool = False) -> list[WPReser
     return sql_query(WPReserve, filter_condition).all()
 
 # Возвращает все резервации по телеграм коду авторизированного подльзователя
-def find_reserves(user: WPUser, is_deleted: bool = False) -> list[WPReserve] | None:
+def find_reserves(user: WPUser, is_deleted: bool = False):
     filter_condition = (WPReserve.user_id == user.ID) & \
                         (WPReserve.reserve_is_deleted == is_deleted)
     return sql_query(WPReserve, filter_condition).all()
 
-# Возвращает место по его коду
-def find_place_by_id(place_id: int) -> WPPlace | None:
-    filter_condition = (WPPlace.ID == place_id)
-    return sql_query(WPPlace, filter_condition).first()
+    # endregion
 
+    # region Message
+    # endregion
+
+    # region Message
 # Возвращение записи сообщении по его коду сообщени телеграма
-def find_message_by_id(message_id: int, is_bot: bool = True) -> WPMessage | None:
+def find_message_by_id(message_id: int, is_bot: bool = True):
     if is_bot:
         filter_condition = (WPMessage.message_telegram_id == message_id) & (~WPMessage.user_id)
     else:
@@ -195,7 +207,7 @@ def find_message_by_id(message_id: int, is_bot: bool = True) -> WPMessage | None
     return sql_query(WPMessage, filter_condition).first()
 
 # Находит запись сообщение по коду сообщения отправленного ботом
-def find_bot_message_by_id(message_bot_id: int, is_bot: bool = True) -> WPMessage | None:
+def find_bot_message_by_id(message_bot_id: int, is_bot: bool = True):
     if is_bot:
         filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & (WPMessage.user_id == None)
     else:
@@ -204,23 +216,20 @@ def find_bot_message_by_id(message_bot_id: int, is_bot: bool = True) -> WPMessag
     return mess
 
 # Находит запись сообщение по коду сообщения отправленного пользователем
-def find_message_by_user_id(user_id: int) -> WPMessage | None:
+def find_user_message(user_id: int):
     filter_condition = (WPMessage.user_id == user_id)
     return sql_query(WPMessage, filter_condition).order_by(desc(WPMessage.ID)).first()
-
-#
-def find_user_message_id(user_id: int) -> WPUserMeta | None:
-    return sql_query(WPUserMeta, (WPUserMeta.user_id == user_id)).first()
+    # endregion
+#endregion
 
 # Проерка авторизирован ли пользователь под данным телеграм кодом
-def is_telegram_id_set(user: WPUser, telegram_id: int) -> WPUserMeta | None:
+def is_telegram_id_set(user: WPUser, telegram_id: int):
     filter_condition = (WPUserMeta.user_id == user.ID) & (WPUserMeta.user_meta_key == TELEGRAM_ID)
     return sql_query(WPUserMeta, filter_condition).first()
 
-
-# Запросы изменений
+#region Запросы изменений
 # Создание резервации места на парковке (Если вернет False резервация не удалась)
-def add_reserves(user: WPUser, hours_count: int) -> WPPlace | None:
+def add_reserves(user: WPUser, hours_count: int):
     now = datetime.now()
     timestamp_begin = now.timestamp()
     timestamp_end = (now + timedelta(hours=hours_count)).timestamp()
@@ -263,7 +272,7 @@ def delete_reserves(user: WPUser, places: list[WPPlace]):
     return False
 
 # Сохранение телеграм кода пользователя как авторизированного
-def save_telegram_id(user: WPUser, telegram_id: int) -> None:
+def save_telegram_id(user: WPUser, telegram_id: int):
     filter_condition = (WPUserMeta.user_id == user.ID) & \
                        (WPUserMeta.user_meta_key == TELEGRAM_ID)
     usermeta = sql_query(WPUserMeta, filter_condition).first()
@@ -279,7 +288,7 @@ def save_telegram_id(user: WPUser, telegram_id: int) -> None:
     session.close()
 
 # Сохранение сообщения в базе данных
-def save_message(my_message: Message, formated_text: str, bot_message: Message, user_id: int | None, answer_id: Optional[int]) -> WPMessage | None:
+def save_message(my_message: Message, formated_text: str, bot_message: Message, user_id: int | None, answer_id: int | None):
     db_message = WPMessage(
         message_date=my_message.date.utcnow().timestamp(),
         message_user_telegram_id=my_message.from_user.id,
@@ -293,5 +302,6 @@ def save_message(my_message: Message, formated_text: str, bot_message: Message, 
 
     return db_message
 
-def save_file(file: WPDocument) -> None:
+def save_file(file: WPDocument):
     sql_add(file)
+#endregion

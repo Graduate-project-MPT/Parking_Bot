@@ -12,7 +12,7 @@ async def group_message(message: types.Message) -> None:
         bot_mess = message.reply_to_message
         replied_message = find_bot_message_by_id(bot_mess.message_id, False)
         if replied_message:            
-            bot_message = await settings.bot.send_message(
+            bot_message = await message.bot.send_message(
                 chat_id=replied_message.message_user_telegram_id,
                 reply_to_message_id=replied_message.message_telegram_id,
                 text=f"{message.text}",
