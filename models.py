@@ -137,7 +137,7 @@ def sql_query(class_example, filter_condition: BooleanClauseList):
         session.close()
         return (query_result)
     except Exception as e:
-        print("\n\sql_delete\n", e, "\n\n\n")
+        print("\n\sql_query\n", e, "\n\n\n")
         return None
 
 # Запросы
@@ -160,7 +160,11 @@ def find_usermeta_by_telegram_id(telegram_id: int) -> WPUserMeta | None:
 def find_user_by_telegram_id(telegram_id: int) -> WPUser | None:
     meta = find_usermeta_by_telegram_id(telegram_id)
     if meta:
-        return sql_query(WPUser, (WPUser.ID == meta.user_id)).first()
+        print("\n\nmeta id = ", meta.ID, "\n\n")
+        user = sql_query(WPUser, (WPUser.ID == meta.user_id)).first()
+        print("\n\nuser id = ")
+        return user
+    print("\n\nmeta id = NONE\n\n")
     return None
 
 # Возвращает актуальные резервации по телеграм коду авторизированного подльзователя
@@ -184,7 +188,6 @@ def find_place_by_id(place_id: int) -> WPPlace | None:
 
 # Возвращение записи сообщении по его коду сообщени телеграма
 def find_message_by_id(message_id: int, is_bot: bool = True) -> WPMessage | None:
-    print("\n\nmessage_id = ", message_id, " - ", is_bot, "\n\n")
     if is_bot:
         filter_condition = (WPMessage.message_telegram_id == message_id) & (~WPMessage.user_id)
     else:
@@ -193,7 +196,6 @@ def find_message_by_id(message_id: int, is_bot: bool = True) -> WPMessage | None
 
 # Находит запись сообщение по коду сообщения отправленного ботом
 def find_bot_message_by_id(message_bot_id: int, is_bot: bool = True) -> WPMessage | None:
-    print("\n\nmessage_bot_id = ", message_bot_id, " - ", is_bot, "\n\n")
     if is_bot:
         filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & (WPMessage.user_id == None)
     else:
@@ -204,7 +206,7 @@ def find_bot_message_by_id(message_bot_id: int, is_bot: bool = True) -> WPMessag
 # Находит запись сообщение по коду сообщения отправленного пользователем
 def find_message_by_user_id(user_id: int) -> WPMessage | None:
     filter_condition = (WPMessage.user_id == user_id)
-    return sql_query(WPMessage, filter_condition).order_by(desc(WPMessage.ID))
+    return sql_query(WPMessage, filter_condition).order_by(desc(WPMessage.ID)).first()
 
 #
 def find_user_message_id(user_id: int) -> WPUserMeta | None:
@@ -277,13 +279,13 @@ def save_telegram_id(user: WPUser, telegram_id: int) -> None:
     session.close()
 
 # Сохранение сообщения в базе данных
-def save_user_message(my_message: Message, bot_message: Message, user_id: int | None, answer_id: Optional[int]) -> WPMessage | None:
+def save_message(my_message: Message, formated_text: str, bot_message: Message, user_id: int | None, answer_id: Optional[int]) -> WPMessage | None:
     db_message = WPMessage(
         message_date=my_message.date.utcnow().timestamp(),
         message_user_telegram_id=my_message.from_user.id,
         message_bot_telegram_id=bot_message.message_id,
         message_telegram_id=my_message.message_id,
-        message_text=my_message.text,
+        message_text=formated_text,
         message_answer_id=answer_id,
         user_id=user_id
     )
