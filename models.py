@@ -195,14 +195,10 @@ def find_message_by_id(message_id: int, is_bot: bool = True) -> WPMessage | None
 def find_bot_message_by_id(message_bot_id: int, is_bot: bool = True) -> WPMessage | None:
     print("\n\nmessage_bot_id = ", message_bot_id, " - ", is_bot, "\n\n")
     if is_bot:
-        filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & (~WPMessage.user_id)
+        filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & (WPMessage.user_id == None)
     else:
-        filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & (WPMessage.user_id)
+        filter_condition = (WPMessage.message_bot_telegram_id == message_bot_id) & (WPMessage.user_id != None)
     mess = sql_query(WPMessage, filter_condition).first()
-    if mess:
-        print("OK = ", mess.ID)
-    else:
-        print("\n\nBad\n\n")
     return mess
 
 # Находит запись сообщение по коду сообщения отправленного пользователем
@@ -281,7 +277,7 @@ def save_telegram_id(user: WPUser, telegram_id: int) -> None:
     session.close()
 
 # Сохранение сообщения в базе данных
-def save_user_message(my_message: Message, bot_message: Message, user_id: int, answer_id: Optional[int]) -> None:
+def save_user_message(my_message: Message, bot_message: Message, user_id: int | None, answer_id: Optional[int]) -> WPMessage | None:
     db_message = WPMessage(
         message_date=my_message.date.utcnow().timestamp(),
         message_user_telegram_id=my_message.from_user.id,
@@ -292,6 +288,8 @@ def save_user_message(my_message: Message, bot_message: Message, user_id: int, a
         user_id=user_id
     )
     sql_add(db_message)
+
+    return db_message
 
 def save_file(file: WPDocument) -> None:
     sql_add(file)

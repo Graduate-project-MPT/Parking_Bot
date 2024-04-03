@@ -7,7 +7,7 @@ from filters.chat_type_filter import ChatTypeFilter
 from typing import Optional, List
 from datetime import datetime
 from config import settings
-from models import WPReserve, WPDocument, \
+from models import WPReserve, WPDocument, WPUser, \
     find_user_by_login, save_telegram_id, is_telegram_id_set, \
     find_user_by_telegram_id, find_usermeta_by_telegram_id, \
     find_actual_reserves, find_reserves, sql_delete, \
@@ -73,8 +73,7 @@ async def command_login_handler(message: Message):
         )
         await settings.bot.send_message(
             chat_id=settings.GROUP_ID,
-            text=f"Пользователь {login} зашёл в аккаунт под телеграмм логином {message.from_user.username}",
-            reply_markup=get_no_auth_markup()
+            text=f"Пользователь {login} зашёл в аккаунт под телеграмм логином {message.from_user.username}"
         )
         meta = find_usermeta_by_telegram_id(message.from_user.id)
         if meta and meta.user_meta_value != str(message.from_user.id):
@@ -82,6 +81,7 @@ async def command_login_handler(message: Message):
                 chat_id=meta.user_meta_value,
                 text=f"В ваш аккаунт зашёл другой человек, "
                      f"вы больше не авторизованы. 🙂",
+                reply_markup=get_no_auth_markup()
             )
             sql_delete(meta)
     else:
@@ -220,7 +220,43 @@ async def command_get_reserves(message: Message):
             reply_markup=get_auth_markup()
         )
 
+async def send_mess(message: Message, user: WPUser):
+    try:
+        str_array = message.caption.split(' ')
+        if(str_array[0] != "send_help"):
+            return
+        mess_test = ''.join(map(str.capitalize, str_array[1:]))
+    except:
+        return
+    if message.reply_to_message:
+        bot_mess = message.reply_to_message
+        reply_data = find_bot_message_by_id(bot_mess.message_id)
+        if reply_data:            
+            bot_message = await settings.bot.send_message(
+                chat_id=settings.GROUP_ID,
+                reply_to_message_id=reply_data.message_telegram_id,
+                text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
+                        f"От: `{user.user_nicename}`\n"
+                        f"email: `{user.user_email}`\n\n"
+                        f"Текст сообщения:\n"
+                        f"{mess_test}",
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True
+            )
+            return save_user_message(message, bot_message, user.ID, reply_data.ID)
 
+    bot_message = await settings.bot.send_message(
+        chat_id=settings.GROUP_ID,
+        text=f"[Данные пользователя:]"
+             f"(https://t.me/{message.from_user.username})\n"
+             f"От: `{user.user_nicename}`\n"
+             f"email: `{user.user_email}`\n\n"
+             f"Текст сообщения:\n"
+             f"{mess_test}",
+        parse_mode=ParseMode.MARKDOWN_V2,
+        disable_web_page_preview=True
+    )
+    return save_user_message(message, bot_message, user.ID, answer_id=None)
 # Запросы на техническую помощь
 # Обработка сообщения
 @router.message(F.photo, ChatTypeFilter(chat_type=["private"]))
@@ -292,29 +328,60 @@ async def document_handler(message: types.Message):
         )
         return
 
-    message_db = find_message_by_user_id(user.ID)
+    message_db = None #send_mess(message=message, user=user)
+    if message.caption:
+        if message.reply_to_message:
+            bot_mess = message.reply_to_message
+            reply_data = find_bot_message_by_id(bot_mess.message_id)
+            if reply_data:            
+                bot_message = await settings.bot.send_message(
+                    chat_id=settings.GROUP_ID,
+                    reply_to_message_id=reply_data.message_telegram_id,
+                    text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
+                            f"От: `{user.user_nicename}`\n"
+                            f"email: `{user.user_email}`\n\n"
+                            f"Текст сообщения:\n"
+                            f"{message.text}",
+                    parse_mode=ParseMode.MARKDOWN_V2,
+                    disable_web_page_preview=True
+                )
+                message_db = save_user_message(message, bot_message, user.ID, reply_data.ID)
+        else:
+            bot_message = await settings.bot.send_message(
+                chat_id=settings.GROUP_ID,
+                text=f"[Данные пользователя:]"
+                    f"(https://t.me/{message.from_user.username})\n"
+                    f"От: `{user.user_nicename}`\n"
+                    f"email: `{user.user_email}`\n\n"
+                    f"Текст сообщения:\n"
+                    f"{message.text}",
+                parse_mode=ParseMode.MARKDOWN_V2,
+                disable_web_page_preview=True
+            )
+            message_db = save_user_message(message, bot_message, user.ID, answer_id=None)
 
-    document = message.document
-    file_in_io = io.BytesIO()
-    file = await settings.bot.get_file(document.file_id)
-    await settings.bot.download_file(file.file_path, destination=file_in_io)
 
-    file_bytes = file_in_io.read(document.file_size)
-
-    if message.caption is not None:
         bot_message = await settings.bot.send_message(
             chat_id=settings.GROUP_ID,
             text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
                  f"От: `{user.user_nicename}`\n"
                  f"email: `{user.user_email}`\n\n"
                  f"Текст сообщения:\n"
-                 f"{message.caption}",
+                 f"{mess_test}",
             disable_web_page_preview=True,
             parse_mode=ParseMode.MARKDOWN_V2
         )
-        save_user_message(message, bot_message, user.ID, answer_id=None)
+        message_db = save_user_message(message, bot_message, user.ID, answer_id=None)
+    else:
+        message_db = find_message_by_user_id(user.ID)
 
-    if message_db is not None:
+    if not message_db:
+        document = message.document
+        file = await settings.bot.get_file(document.file_id)
+        file_in_io = io.BytesIO()
+        await settings.bot.download_file(file.file_path, destination=file_in_io)
+
+        file_bytes = file_in_io.read(document.file_size)
         wp_document = WPDocument(
             message_id=message_db.ID,
             document_file_id=document.file_id,
@@ -327,16 +394,16 @@ async def document_handler(message: types.Message):
         )
         save_file(wp_document)
 
-    await settings.bot.send_document(
-        chat_id=settings.GROUP_ID,
-        reply_to_message_id=message_db.message_bot_telegram_id,
-        caption=f"[Данные пользователя:]"
-                f"(https://t.me/{message.from_user.username})\n"
-                f"От: `{user.user_nicename}`\n"
-                f"email: `{user.user_email}`\n\n",
-        parse_mode=ParseMode.MARKDOWN_V2,
-        document=BufferedInputFile(file_bytes, filename=document.file_name),
-    )
+        await settings.bot.send_document(
+            chat_id=settings.GROUP_ID,
+            reply_to_message_id=message_db.message_bot_telegram_id,
+            caption=f"[Данные пользователя:]"
+                    f"(https://t.me/{message.from_user.username})\n"
+                    f"От: `{user.user_nicename}`\n"
+                    f"email: `{user.user_email}`\n\n",
+            parse_mode=ParseMode.MARKDOWN_V2,
+            document=BufferedInputFile(file_bytes, filename=document.file_name),
+        )
 
 @router.message(ChatTypeFilter(chat_type=["private"]))
 async def private_message(message: Message):
@@ -349,37 +416,35 @@ async def private_message(message: Message):
         )
         return
 
-    if message.reply_to_message:
-        bot_mess = message.reply_to_message
-        print("\n\ntry find bot message\n\n")
-        if find_bot_message_by_id(bot_mess.message_id):
-            replied_message_id = bot_mess.reply_to_message.message_id
-            print("\n\ntry find employee message\n\n")
-            if find_message_by_id(replied_message_id, True):
-                bot_message = await settings.bot.send_message(
-                    chat_id=settings.GROUP_ID,
-                    text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
-                         f"От: `{user.user_nicename}`\n"
-                         f"email: `{user.user_email}`\n\n"
-                         f"Текст сообщения:\n"
-                         f"{message.text}",
-                    parse_mode=ParseMode.MARKDOWN_V2,
-                    disable_web_page_preview=True
-                )
-                save_user_message(message, bot_message, user.ID, replied_message_id)
-                return
+    send_mess(message=message, user=user)
 
-    print("\n\nJust simples\n\n")
+    # if message.reply_to_message:
+    #     bot_mess = message.reply_to_message
+    #     reply_data = find_bot_message_by_id(bot_mess.message_id)
+    #     if reply_data:            
+    #         bot_message = await settings.bot.send_message(
+    #             chat_id=settings.GROUP_ID,
+    #             reply_to_message_id=reply_data.message_telegram_id,
+    #             text=f"[Данные пользователя:](https://t.me/{message.from_user.username})\n"
+    #                     f"От: `{user.user_nicename}`\n"
+    #                     f"email: `{user.user_email}`\n\n"
+    #                     f"Текст сообщения:\n"
+    #                     f"{message.text}",
+    #             parse_mode=ParseMode.MARKDOWN_V2,
+    #             disable_web_page_preview=True
+    #         )
+    #         save_user_message(message, bot_message, user.ID, reply_data.ID)
+    #         return
 
-    bot_message = await settings.bot.send_message(
-        chat_id=settings.GROUP_ID,
-        text=f"[Данные пользователя:]"
-             f"(https://t.me/{message.from_user.username})\n"
-             f"От: `{user.user_nicename}`\n"
-             f"email: `{user.user_email}`\n\n"
-             f"Текст сообщения:\n"
-             f"{message.text}",
-        parse_mode=ParseMode.MARKDOWN_V2,
-        disable_web_page_preview=True
-    )
-    save_user_message(message, bot_message, user.ID, answer_id=None)
+    # bot_message = await settings.bot.send_message(
+    #     chat_id=settings.GROUP_ID,
+    #     text=f"[Данные пользователя:]"
+    #          f"(https://t.me/{message.from_user.username})\n"
+    #          f"От: `{user.user_nicename}`\n"
+    #          f"email: `{user.user_email}`\n\n"
+    #          f"Текст сообщения:\n"
+    #          f"{message.text}",
+    #     parse_mode=ParseMode.MARKDOWN_V2,
+    #     disable_web_page_preview=True
+    # )
+    # save_user_message(message, bot_message, user.ID, answer_id=None)
