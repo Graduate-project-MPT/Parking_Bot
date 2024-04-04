@@ -3,9 +3,10 @@ from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram.utils import markdown
+
+from db.queries.get import get_usermeta_by_telegram_id
+from keyboards.reply.common import get_auth_rk, get_no_auth_rk
 from filters.chat_type_filter import ChatTypeFilter
-from keyboards.reply_keyboards.common_reply_keyboard import get_auth_rk, get_no_auth_rk
-from models import find_usermeta_by_telegram_id
 
 router = Router(name=__name__)
 
@@ -13,7 +14,7 @@ router = Router(name=__name__)
 async def handle_start(message: types.Message):
     
     markup:ReplyKeyboardMarkup
-    if find_usermeta_by_telegram_id(message.from_user.id):
+    if get_usermeta_by_telegram_id(message.from_user.id):
         markup = get_auth_rk()
     else:
         markup = get_no_auth_rk()
@@ -25,7 +26,7 @@ async def handle_start(message: types.Message):
 @router.message(Command("help"), ChatTypeFilter(chat_type=["private"]))
 async def handle_help(message: types.Message):
     markup:ReplyKeyboardMarkup
-    if find_usermeta_by_telegram_id(message.from_user.id):
+    if get_usermeta_by_telegram_id(message.from_user.id):
         markup = get_auth_rk()
     else:
         markup = get_no_auth_rk()

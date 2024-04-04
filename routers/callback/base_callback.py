@@ -1,4 +1,4 @@
-from keyboards.inline_keyboards.common_inline_keyboard import ReserveIDHandler
+from keyboards.inline.common import ReserveIDHandler
 from aiogram.types import CallbackQuery
 from aiogram import Router
 
@@ -11,4 +11,4 @@ async def delete_reserve(
     callback_query: CallbackQuery,
     callback_data: ReserveIDHandler
 ):
-    print("")
+    callback_query.answer("Press on button with place_code = ", callback_data.place_code)

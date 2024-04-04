@@ -7,12 +7,12 @@ class ButtonIK:
     RESERVE_LIST = "Просмотр одобренных бронированний"
     RESERVE_DATA = "Просмотр бронирований"
 
-class ReserveIDHandler(CallbackData, prefix="id-handler"):
-    ID: int
+class ReserveIDHandler(CallbackData, prefix='my_callback'):
+    place_code: str
 
-def get_added_reserve_ik(reserve_id: int) -> InlineKeyboardMarkup:
+def build_reserve_action(place_code: str) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    reserve_id_handler = ReserveIDHandler(reserve_id)
+    reserve_id_handler = ReserveIDHandler(place_code)
     builder.button(
         text=ButtonIK.ButtonIK,
         callback_data=reserve_id_handler.pack(),
