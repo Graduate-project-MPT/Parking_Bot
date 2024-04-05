@@ -10,18 +10,7 @@ def add_reserves(user: WPUser, hours_count: int):
     now = datetime.now()
     timestamp_begin = now.timestamp()
     timestamp_end = (now + timedelta(hours=hours_count)).timestamp()
-    filter_condition_reserve = (WPReserve.reserve_begin.between(timestamp_begin, timestamp_end)) | \
-                       (WPReserve.reserve_end.between(timestamp_begin, timestamp_end))
-    reserves = sql_query(WPReserve, filter_condition_reserve)
-    if reserves.count() > 0:
-        filter_condition_place = (~WPPlace.ID.in_([x.place_id for x in reserves.all()]))
-    else:
-        filter_condition_place = (True)
-    place: WPPlace = random.choice(sql_query(WPPlace, filter_condition_place).all())
-        
-    if not place:
-        return None
-
+    
     new_reserve = WPReserve(
         reserve_begin=timestamp_begin,
         reserve_end=timestamp_end,
@@ -45,25 +34,30 @@ def delete_reserve_by_id(reserve_id: int):
 
 def add_place_to_reserve_by_id(reserve_id: int):
     filter_condition_reserve = (WPReserve.ID == reserve_id)
-    reserve: WPReserve = sql_query(WPReserve, filter_condition_reserve).first()
-    if not reserve:
+    reserve_query = sql_query(WPReserve, filter_condition_reserve)
+    if not reserve_query.first():
         return None
-    timestamp_begin = reserve.reserve_begin
-    timestamp_end = reserve.reserve_end
+    timestamp_begin = reserve_query.first().reserve_begin
+    timestamp_end = reserve_query.first().reserve_end
 
-    filter_condition_reserve = (WPReserve.reserve_begin.between(timestamp_begin, timestamp_end)) | \
-                       (WPReserve.reserve_end.between(timestamp_begin, timestamp_end))
+    filter_condition_reserve = (
+            (WPReserve.reserve_begin.between(timestamp_begin, timestamp_end)) | \
+            (WPReserve.reserve_end.between(timestamp_begin, timestamp_end))
+        ) & (WPReserve.place_id) & (~WPReserve.reserve_is_deleted)
     reserves = sql_query(WPReserve, filter_condition_reserve)
     if reserves.count() > 0:
         filter_condition_place = (~WPPlace.ID.in_([x.place_id for x in reserves.all()]))
     else:
         filter_condition_place = (True)
-    place: WPPlace = random.choice(sql_query(WPPlace, filter_condition_place).all())
+    place_list: list[WPPlace] = sql_query(WPPlace, filter_condition_place).all()
+    place: WPPlace = random.choice(place_list)
         
     if not place:
         return None
     
-    reserve.place_id = place.ID
+    reserve_query.update({
+        'place_id': place.ID
+    })
     sql_commit()
     return place
 
@@ -86,10 +80,12 @@ def delete_reserve(user: WPUser, place: WPPlace):
 def save_telegram_id(user: WPUser, telegram_id: int):
     filter_condition = (WPUserMeta.user_id == user.ID) & \
                        (WPUserMeta.user_meta_key == TELEGRAM_ID)
-    usermeta = sql_query(WPUserMeta, filter_condition).first()
+    usermeta_query = sql_query(WPUserMeta, filter_condition)
 
-    if usermeta:
-        usermeta.user_meta_value = telegram_id
+    if usermeta_query.first():
+        usermeta_query.update({
+            'user_meta_value': telegram_id
+        })
         return sql_commit()
     else:
         usermeta = WPUserMeta(user_id=user.ID,

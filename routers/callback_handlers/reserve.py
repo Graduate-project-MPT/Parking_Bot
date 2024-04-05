@@ -16,8 +16,15 @@ async def delete_bot_reserve(
     callback_data: ReserveBotCallback
 ):
     if delete_reserve_by_id(callback_data.reserve_id):
-        await callback_query.message.answer(
-            text=f"Reserve with ID = {callback_data.reserve_id} was deleteed"
+        await callback_query.bot.edit_message_reply_markup(
+            message_id=callback_data.user_message_id,
+            chat_id=callback_data.chat_telegram_id,
+            reply_markup=None,
+        )
+        await callback_query.bot.send_message(
+            text="<b>Заявка была отклонена!</b>",
+            reply_to_message_id=callback_data.user_message_id,
+            chat_id=callback_data.chat_telegram_id
         )
         await callback_query.message.delete()
     await callback_query.answer()
@@ -29,14 +36,11 @@ async def approve_bot_reserve(
 ):
     place = add_place_to_reserve_by_id(callback_data.reserve_id)
     if place:
-        await callback_query.message.answer(
-            text=f"Approve with ID = {callback_data.reserve_id}"
-        )
         await callback_query.message.delete()
         await callback_query.bot.send_message(
-            chat_id=callback_data.user_telegram_id,
-            text=f"Reserve place = {place.place_code}",
-            reply_to_message_id=callback_data.user_message_id
+            text=f"Ваша заявка была была принита <b>парковочное место = {place.place_code}</b>",
+            reply_to_message_id=callback_data.user_message_id,
+            chat_id=callback_data.chat_telegram_id
         )
     await callback_query.answer()
 
@@ -46,12 +50,11 @@ async def delete_user_reserve(
     callback_data: ReserveUserCallback
 ):
     if delete_reserve_by_id(callback_data.reserve_id):
-        await callback_query.message.answer(
-            text=f"Reserve with ID = {callback_data.reserve_id} was deleteed"
+        await callback_query.message.edit_reply_markup(
+            reply_markup=None
         )
-        await callback_query.message.delete()
         await callback_query.bot.delete_message(
             chat_id=settings.RESERVETION_GROUP_ID,
             message_id=callback_data.bot_message_id
         )
-    await callback_query.answer()
+    await callback_query.answer(f"")

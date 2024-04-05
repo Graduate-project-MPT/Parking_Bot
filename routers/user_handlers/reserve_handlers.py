@@ -71,9 +71,9 @@ async def command_get_reserves(message: Message):
             chat_id=settings.RESERVETION_GROUP_ID,
         )
         user_mess = await message.answer(
-            "Заявка на бронирование места на парковке отправленна",
+            text=f"Заявка на бронирование места на парковке отправленна",
             parse_mode=ParseMode.HTML,
-            reply_markup=build_user_reserve_action(reserve_id=reserve.ID, message_id=bot_mess)
+            reply_markup=build_user_reserve_action(reserve_id=reserve.ID, message=bot_mess)
         )
         await bot_mess.edit_reply_markup(reply_markup=build_bot_reserve_action(reserve_id=reserve.ID, message=user_mess))
     else:
