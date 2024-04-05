@@ -1,6 +1,8 @@
 from sqlalchemy import BooleanClauseList
 from ..classes import session
 
+from db.classes import WPReserve
+
 # Добавляет запись
 def sql_add(data):
     try:
@@ -30,3 +32,13 @@ def sql_query(class_example, filter_condition: BooleanClauseList):
     except Exception as e:
         print("\n\sql_query\n", e, "\n\n\n")
         return None
+
+
+def sql_commit():
+    try:
+        session.commit()
+        session.close()
+        return True
+    except Exception as e:
+        print("\n\nsql_commit\n", e, "\n\n")
+    return False

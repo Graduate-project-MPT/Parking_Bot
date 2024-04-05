@@ -6,6 +6,7 @@ load_dotenv()
 class Settings:
     CON_STRING: str = os.getenv('CON_STRING')
     GROUP_ID: str = os.getenv('GROUP_ID')
+    RESERVETION_GROUP_ID: str = os.getenv('RESERVETION_GROUP_ID')
     ADMIN_ID: int = int(os.getenv('ADMIN_ID'))
     TOKEN_API: str = os.getenv('TOKEN_API')
 

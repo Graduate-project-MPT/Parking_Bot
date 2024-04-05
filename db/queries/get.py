@@ -4,6 +4,10 @@ from ..classes import session, TELEGRAM_ID, \
 from .base import sql_query
 from datetime import timedelta, datetime
 
+def get_reserve_by_id(ID: int):
+    filter_condition = (WPReserve.ID == ID)
+    return sql_query(WPReserve, filter_condition).first()
+
 def get_user_by_login(login: str):
     return sql_query(WPUser, (WPUser.user_login == login)).first()
 
@@ -35,8 +39,9 @@ def get_actual_reserve(user: WPUser):
     actual_timestamp = datetime.now().timestamp()
     filter_condition = (WPReserve.user_id == user.ID) & \
                        (WPReserve.reserve_end > actual_timestamp) & \
-                       (not WPReserve.reserve_is_deleted)
-    return sql_query(WPReserve, filter_condition).first()
+                       (~WPReserve.reserve_is_deleted)
+                    #    (WPReserve.reserve_is_started)
+    return sql_query(WPReserve, filter_condition).all()
 
 # Возвращает все резервации по телеграм коду авторизированного подльзователя
 def get_reserves(user: WPUser, is_deleted: bool = False):

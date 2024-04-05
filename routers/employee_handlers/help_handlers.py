@@ -21,4 +21,4 @@ async def group_message(message: Message) -> None:
                 parse_mode=ParseMode.MARKDOWN_V2,
                 disable_web_page_preview=True
             )
-            return add_message(message, message.text, bot_message, None, replied_message.ID)
+            add_message(message, message.text, bot_message, None, replied_message.ID)

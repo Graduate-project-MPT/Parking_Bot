@@ -7,9 +7,10 @@ from .base_func import is_authorize, get_reserves_list
 
 from db.classes import WPUser
 from db.queries.get import get_actual_reserve, get_reserves, get_places_by_code
-from db.queries.post import add_reserves, delete_reserves 
+from db.queries.post import add_reserves, delete_reserve
 from keyboards.reply.common import get_auth_rk, get_no_auth_rk
 from keyboards.inline.common import build_reserve_action
+from keyboards.inline.reserve import build_bot_reserve_action, build_user_reserve_action
 from filters.chat_type_filter import ChatTypeFilter
 from config import settings
 
@@ -62,13 +63,19 @@ async def command_get_reserves(message: Message):
             reply_markup=get_auth_rk()
         )
         return
-    place = add_reserves(user, hours_count)
-    if place:
-        await message.answer(
-            f"Резервация прошла <b>успешно</b>\n    Ваше парковочное место - {place.place_code}",
+    reserve = add_reserves(user, hours_count)
+    if reserve:
+        bot_mess: Message = await message.bot.send_message(
+            text=f"Пользователь {user.user_login} отправил заявку на бронирование места",
             parse_mode=ParseMode.HTML,
-            reply_markup=build_reserve_action(reserve_id=place.place_code),
+            chat_id=settings.RESERVETION_GROUP_ID,
         )
+        user_mess = await message.answer(
+            "Заявка на бронирование места на парковке отправленна",
+            parse_mode=ParseMode.HTML,
+            reply_markup=build_user_reserve_action(reserve_id=reserve.ID, message_id=bot_mess)
+        )
+        await bot_mess.edit_reply_markup(reply_markup=build_bot_reserve_action(reserve_id=reserve.ID, message=user_mess))
     else:
         await message.answer(
             "<b>Резервация провалилась</b>",
@@ -85,14 +92,14 @@ async def command_get_reserves(message: Message):
         return
 
     try:
-        places: list[str] = message.text.split(' ')
+        _, place = message.text.split(' ')
     except Exception:
         await message.reply(
             "Неверный формат команды. (Используйте: /reserve_delete Код_парковочного_места)",
             reply_markup=get_auth_rk()
         )
         return
-    if delete_reserves(user, get_places_by_code(places)):
+    if delete_reserve(user, get_places_by_code(place)):
         await message.answer(
             "<b>Резервация удалена</b>",
             parse_mode=ParseMode.HTML,

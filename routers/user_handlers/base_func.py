@@ -60,7 +60,8 @@ async def send_mess(message: Message, text_line: str, user: WPUser):
                 parse_mode=ParseMode.MARKDOWN_V2,
                 disable_web_page_preview=True
             )
-            return add_message(message, mess_test, bot_message, user.ID, reply_data.ID)
+            add_message(message, mess_test, bot_message, user.ID, reply_data.ID)
+            return 
 
     bot_message = await message.bot.send_message(
         chat_id=settings.GROUP_ID,
@@ -73,4 +74,4 @@ async def send_mess(message: Message, text_line: str, user: WPUser):
         parse_mode=ParseMode.MARKDOWN_V2,
         disable_web_page_preview=True
     )
-    return add_message(message, mess_test, bot_message, user.ID, answer_id=None)
+    add_message(message, mess_test, bot_message, user.ID, answer_id=None)

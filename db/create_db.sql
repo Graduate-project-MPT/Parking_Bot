@@ -100,7 +100,7 @@ CREATE TABLE wp_reserve(
 	reserve_is_deleted BIT NOT NULL DEFAULT 0,
 
 	place_id BIGINT NULL,
-	user_id BIGINT NOT NULL,
+	user_id BIGINT NULL,
 
 	FOREIGN KEY(place_id) REFERENCES wp_place(ID),
 	FOREIGN KEY(user_id) REFERENCES wp_user(ID),
@@ -111,72 +111,76 @@ CREATE TABLE wp_reserve(
 
 -- Trigger tables
 
-CREATE TABLE wp_auth_history(
-	ID BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	ahistory_user_telegram_id BIGINT NOT NULL,
-	ahistory_user_login TEXT NOT NULL,
-	ahistory_user_auth_datetime BIGINT NOT NULL DEFAULT(NOW())
-);
+-- CREATE TABLE wp_auth_history(
+-- 	ID BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+-- 	ahistory_user_telegram_id BIGINT NOT NULL,
+-- 	ahistory_user_login TEXT NOT NULL,
+-- 	ahistory_user_auth_datetime BIGINT NOT NULL DEFAULT(NOW())
+-- );
 
-CREATE TABLE wp_reserve_history(
-	ID BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
-	rhistory_id_reserve BIGINT NOT NULL,
-	rhistory_user_login TEXT NOT NULL,
-	rhistory_begin_reserve BIGINT NOT NULL,
-	rhistory_end_reserve BIGINT NOT NULL,
-	rhistory_place_code VARCHAR(4) NULL,
-	rhistory_is_deleted_reserve BIT NOT NULL DEFAULT(0)
-);
+-- CREATE TABLE wp_reserve_history(
+-- 	ID BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+-- 	rhistory_id_reserve BIGINT NOT NULL,
+-- 	rhistory_user_login TEXT NOT NULL,
+-- 	rhistory_begin_reserve BIGINT NOT NULL,
+-- 	rhistory_end_reserve BIGINT NOT NULL,
+-- 	rhistory_place_code VARCHAR(4) NULL,
+-- 	rhistory_is_deleted_reserve BIT NOT NULL DEFAULT(0)
+-- );
 
 -- Triggers
-DELIMITER //
-CREATE TRIGGER reserve_insert
-AFTER INSERT ON wp_reserve
-FOR EACH ROW
-BEGIN
-	INSERT INTO wp_reserve_history(rhistory_id_reserve,
-		rhistory_begin_reserve, rhistory_end_reserve, rhistory_user_login)
-		(select r.ID, r.reserve_begin, r.reserve_end, u.user_login
-			from wp_reserve r
-			inner join wp_user u on r.user_id = u.ID
-			WHERE r.ID = NEW.ID
-		);
-END//
+-- DELIMITER //
+-- CREATE TRIGGER reserve_insert
+-- AFTER INSERT ON wp_reserve
+-- FOR EACH ROW
+-- BEGIN
+-- 	INSERT INTO wp_reserve_history(rhistory_id_reserve,
+-- 		rhistory_begin_reserve, rhistory_end_reserve, rhistory_user_login)
+-- 		(select r.ID, r.reserve_begin, r.reserve_end, u.user_login
+-- 			from wp_reserve r
+-- 			inner join wp_user u on r.user_id = u.ID
+-- 			WHERE r.ID = NEW.ID
+-- 		);
+-- END//
 
-CREATE TRIGGER reserve_update
+-- CREATE TRIGGER reserve_update
+-- BEFORE UPDATE ON wp_reserve
+-- FOR EACH ROW
+-- BEGIN
+-- 	-- IF(NEW.reserve_is_started = 1) THEN
+-- 		IF EXISTS (
+-- 			SELECT * from wp_reserve
+-- 				WHERE (
+-- 					(NEW.reserve_begin BETWEEN reserve_begin AND reserve_end) OR
+-- 					(NEW.reserve_end BETWEEN reserve_begin AND reserve_end)
+-- 				) AND (NEW.place_id IS NOT NULL) AND (NEW.place_id = place_id) AND (reserve_is_deleted = 0)
+-- 		) THEN
+-- 			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Пересечение диапазонов дат недопустимо';
+-- 		END IF;
+	-- 	UPDATE wp_reserve_history SET 
+	-- 		rhistory_place_code = 
+	-- 			(SELECT place_code FROM wp_place WHERE ID = NEW.place_id)
+	-- 		WHERE rhistory_id_reserve = NEW.ID;
+	-- ELSE
+	-- 	UPDATE wp_reserve_history SET rhistory_is_deleted_reserve = NEW.reserve_is_deleted
+	-- 		WHERE rhistory_id_reserve = NEW.ID;
+	-- END IF;
+-- END//
+
+CREATE TRIGGER reserve_check
 BEFORE UPDATE ON wp_reserve
 FOR EACH ROW
 BEGIN
-	IF(NEW.reserve_is_started = 1) THEN
-		IF EXISTS (
-			SELECT * from wp_reserve
-				WHERE (
-					(NEW.reserve_begin BETWEEN reserve_begin AND reserve_end) OR
-					(NEW.reserve_end BETWEEN reserve_begin AND reserve_end)
-				) AND (NEW.place_id IS NOT NULL) AND (NEW.place_id = place_id) AND (reserve_is_deleted = 0)
-		) THEN
-			SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Пересечение диапазонов дат недопустимо';
-		END IF;
-		UPDATE wp_reserve_history SET 
-			rhistory_place_code = 
-				(SELECT place_code FROM wp_place WHERE ID = NEW.place_id)
-			WHERE rhistory_id_reserve = NEW.ID;
-	ELSE
-		UPDATE wp_reserve_history SET rhistory_is_deleted_reserve = NEW.reserve_is_deleted
-			WHERE rhistory_id_reserve = NEW.ID;
-	END IF;
-END//
-
-CREATE TRIGGER reserve_check
-BEFORE INSERT ON wp_reserve
-FOR EACH ROW
-BEGIN
+	-- Обновление is_deleted is_started в истории
+	IF(NEW.place_id IS NULL) THEN
+		RETURN
+	END IF
 	IF NOT EXISTS (
 		SELECT * from wp_reserve
 			WHERE (
 				(NEW.reserve_begin BETWEEN reserve_begin AND reserve_end) OR
 				(NEW.reserve_end BETWEEN reserve_begin AND reserve_end)
-			) AND (reserve_is_deleted = 0)
+			) AND (NEW.place_id = place_id) AND (reserve_is_deleted = 0)
 	) THEN
         SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Пересечение диапазонов дат недопустимо';
     END IF;
