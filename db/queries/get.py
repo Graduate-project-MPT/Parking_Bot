@@ -39,8 +39,16 @@ def get_actual_reserve(user: WPUser):
     actual_timestamp = datetime.now().timestamp()
     filter_condition = (WPReserve.user_id == user.ID) & \
                        (WPReserve.reserve_end > actual_timestamp) & \
+                       (~WPReserve.reserve_is_deleted) & \
+                       (WPReserve.place_id)
+    return sql_query(WPReserve, filter_condition).all()
+
+# Возвращает актуальные резервации по телеграм коду авторизированного подльзователя
+def get_reserve_request(user: WPUser):
+    actual_timestamp = datetime.now().timestamp()
+    filter_condition = (WPReserve.user_id == user.ID) & \
+                       (WPReserve.reserve_end > actual_timestamp) & \
                        (~WPReserve.reserve_is_deleted)
-                    #    (WPReserve.reserve_is_started)
     return sql_query(WPReserve, filter_condition).all()
 
 # Возвращает все резервации по телеграм коду авторизированного подльзователя

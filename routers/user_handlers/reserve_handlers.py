@@ -6,7 +6,7 @@ from aiogram.types import Message, BotCommand
 from .base_func import is_authorize, get_reserves_list
 
 from db.classes import WPUser
-from db.queries.get import get_actual_reserve, get_reserves, get_places_by_code
+from db.queries.get import get_actual_reserve, get_reserve_request, get_reserves, get_places_by_code
 from db.queries.post import add_reserves, delete_reserve
 from keyboards.reply.common import get_auth_rk, get_no_auth_rk
 from keyboards.inline.common import build_reserve_action
@@ -17,7 +17,7 @@ from config import settings
 router = Router(name=__name__)
 
 # Получение списка актуальных резерваций парковочных мест
-@router.message(Command(BotCommand(command="reserve", description="Мои бронирования")),
+@router.message(Command(BotCommand(command="reserves", description="Мои бронирования")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_get_actual_reserves(message: Message):
     user: WPUser = await is_authorize(message)
@@ -30,9 +30,24 @@ async def command_get_actual_reserves(message: Message):
         parse_mode=ParseMode.HTML,
         reply_markup=get_auth_rk()
     )
+    
+# Получение списка актуальных резерваций парковочных мест
+@router.message(Command(BotCommand(command="reserves_request", description="Мои запросы бронирования")),
+                ChatTypeFilter(chat_type=["private"]))
+async def command_get_actual_reserves(message: Message):
+    user: WPUser = await is_authorize(message)
+    if not user:
+        return
+
+    reserves = get_reserve_request(user)
+    await message.answer(
+        get_reserves_list(reserves),
+        parse_mode=ParseMode.HTML,
+        reply_markup=get_auth_rk()
+    )
 
 # Получение списка всех резерваций парковочных мест
-@router.message(Command(BotCommand(command="reserve_history", description="История бронированний")),
+@router.message(Command(BotCommand(command="reserves_history", description="История бронированний")),
                 ChatTypeFilter(chat_type=["private"]))
 async def command_get_reserves(message: Message):
     user: WPUser = await is_authorize(message)
@@ -57,6 +72,8 @@ async def command_get_reserves(message: Message):
     try:
         _, hours_count = message.text.split(' ')
         hours_count = int(hours_count)
+        if(hours_count < 0):
+            raise Exception()
     except Exception:
         await message.reply(
             "Неверный формат команды. (Используйте: /reserve_add Количество_часов_резервации)",

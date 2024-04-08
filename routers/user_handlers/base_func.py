@@ -25,11 +25,12 @@ def get_reserves_list(reserves: Optional[List[WPReserve]]):
     if not reserves:
         return "<b>Резервирований не найдено!</b>"
     line = "<b>Список резерваций</b>\n\n"
-    line += "<b>Парковочное место     Временной промежуток</b>\n"
+    line += "<b>Парковочное место               Временной промежуток</b>\n"
     for reserve in reserves:
         date_begin = datetime.fromtimestamp(reserve.reserve_begin).strftime("%m/%d/%Y, %H:%M:%S")
         date_end = datetime.fromtimestamp(reserve.reserve_end).strftime("%m/%d/%Y, %H:%M:%S")
-        line += f"                 <b>{reserve.place.place_code}</b>                {date_begin} / {date_end}\n"
+        line += f"                 <b>" + (reserve.place.place_code if reserve.place else "------- ") + "</b>" \
+                f"                  {date_begin} / {date_end}\n"
     return line
 
 # Отправка собщения пользователем

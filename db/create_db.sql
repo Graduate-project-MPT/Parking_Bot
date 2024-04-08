@@ -7,7 +7,7 @@ create table wp_user(
     user_nicename varchar(255) not null,
     user_email varchar(255) not null,
     user_url varchar(255) not null,
-    user_registered timestamp not null,
+    user_registered bigint not null,
     user_status int not null,
     user_display_name varchar(255) not null
 );

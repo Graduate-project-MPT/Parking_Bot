@@ -3,6 +3,7 @@ from aiogram.utils.keyboard import ReplyKeyboardBuilder
 class ButtonRK:
     AUTH = "Авторизация"
     LOGIN = "Получить свой логин"
+    
     EXIT = "Выход из аккаунта"
 
 def get_no_auth_rk():

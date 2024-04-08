@@ -109,6 +109,7 @@ async def command_send_document_handler(message: types.Message):
 async def command_send_help(message: Message):
     user: WPUser = await is_authorize(message)
     if not user:
+        await message.answer("you not auth!")
         return
     
     await send_mess(message, message.text, user)
