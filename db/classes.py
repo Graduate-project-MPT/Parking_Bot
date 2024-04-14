@@ -95,12 +95,12 @@ class WPReserve(Base):
     ID = Column(BigInteger, primary_key=True, autoincrement=True)
     reserve_begin = Column(BigInteger, nullable=False)
     reserve_end = Column(BigInteger, nullable=False)
-    reserve_is_deleted = Column(Boolean, nullable=False, default=0)
-    reserve_is_started = Column(Boolean, nullable=False, default=0)
+    reserve_is_deleted = Column(Boolean, nullable=False, default=False)
+    reserve_is_started = Column(Boolean, nullable=False, default=False)
 
     place_id = Column(BigInteger,
                       ForeignKey('wp_place.ID'), nullable=True)
-    user_id = Column(Boolean,
+    user_id = Column(BigInteger,
                      ForeignKey('wp_user.ID'), nullable=False)
 
     place = relationship('WPPlace', back_populates='reserve')

@@ -1,8 +1,8 @@
 from sqlalchemy import desc
-from ..classes import session, TELEGRAM_ID, \
+from ..classes import TELEGRAM_ID, \
     WPMessage, WPPlace, WPReserve, WPUser, WPUserMeta
 from .base import sql_query
-from datetime import timedelta, datetime
+from datetime import datetime
 
 def get_reserve_by_id(ID: int):
     filter_condition = (WPReserve.ID == ID)

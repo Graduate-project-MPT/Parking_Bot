@@ -8,9 +8,8 @@ from .base_func import is_authorize, get_reserves_list
 from db.classes import WPUser
 from db.queries.get import get_actual_reserve, get_reserve_request, get_reserves, get_places_by_code
 from db.queries.post import add_reserves, delete_reserve
-from keyboards.reply.common import get_auth_rk, get_no_auth_rk
-from keyboards.inline.common import build_reserve_action
-from keyboards.inline.reserve import build_bot_reserve_action, build_user_reserve_action
+from keyboards.reply.common import get_auth_rk
+from keyboards.inline.reserve_CRUD import build_bot_reserve_action, build_user_reserve_action
 from filters.chat_type_filter import ChatTypeFilter
 from config import settings
 

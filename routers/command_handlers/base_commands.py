@@ -30,7 +30,8 @@ async def handle_help(message: types.Message):
         markup = get_auth_rk()
     else:
         markup = get_no_auth_rk()
+    message.chat
     await message.answer(
-        "I am parking bot",
+        f"I am parking bot. \nchat.id = {message.chat.id}\nfrom_user.id = {message.from_user.id}",
         parse_mode=ParseMode.HTML, reply_markup=markup
     )

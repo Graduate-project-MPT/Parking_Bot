@@ -1,4 +1,4 @@
-from keyboards.inline.reserve import ReserveAction, ReserveBotCallback, ReserveUserCallback  
+from keyboards.inline.reserve_CRUD import ReserveAction, ReserveBotCallback, ReserveUserCallback  
 from aiogram.types import CallbackQuery
 from aiogram import Router, F
 

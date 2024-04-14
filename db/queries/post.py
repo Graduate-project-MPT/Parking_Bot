@@ -10,28 +10,18 @@ def add_reserves(user: WPUser, hours_count: int):
     now = datetime.now()
     timestamp_begin = now.timestamp()
     timestamp_end = (now + timedelta(hours=hours_count)).timestamp()
-    
+
     new_reserve = WPReserve(
         reserve_begin=timestamp_begin,
         reserve_end=timestamp_end,
+        reserve_is_deleted = False,
+        reserve_is_started = False,
         place_id=None,
         user_id=user.ID,
     )
     if sql_add(new_reserve):
         return new_reserve
     
-# Удаление резервации
-def delete_reserve_by_id(reserve_id: int):
-    filter_condition = (WPReserve.ID == reserve_id)
-    reserve = sql_query(WPReserve, filter_condition)
-
-    if reserve:
-        reserve.update({
-            'reserve_is_deleted': True
-        })
-        return sql_commit()
-    return False
-
 def add_place_to_reserve_by_id(reserve_id: int):
     filter_condition_reserve = (WPReserve.ID == reserve_id)
     reserve_query = sql_query(WPReserve, filter_condition_reserve)
@@ -62,11 +52,35 @@ def add_place_to_reserve_by_id(reserve_id: int):
     return place
 
 # Удаление резервации
+def delete_reserve_by_id(reserve_id: int):
+    filter_condition = (WPReserve.ID == reserve_id)
+    reserve = sql_query(WPReserve, filter_condition)
+
+    if reserve:
+        reserve.update({
+            'reserve_is_deleted': True
+        })
+        return sql_commit()
+    return False
+
+# Удаление резервации
 def delete_reserve(user: WPUser, place: WPPlace):
     filter_condition = (WPReserve.reserve_end > datetime.now().timestamp()) & \
                        (WPReserve.user_id == user.ID) & \
-                       (WPReserve.place_id == place) & \
+                       (WPReserve.place_id == place.ID) & \
                        (~WPReserve.reserve_is_deleted)
+    reserves = sql_query(WPReserve, filter_condition)
+
+    if reserves:
+        reserves.update({
+            'reserve_is_deleted': True
+        })
+        return sql_commit()
+    return False
+
+# Удаление резервации
+def delete_reserve_ID(reserve_id: int):
+    filter_condition = (~WPReserve.ID == reserve_id)
     reserves = sql_query(WPReserve, filter_condition)
 
     if reserves:

@@ -1,7 +1,7 @@
 services:
   pythonapp:
     build: '/'
-    command: sh -c "sleep 20s ; python3 ./main.py"
+    command: sh -c "sleep 60s ; python3 ./main.py"
     depends_on:
       - db
     ports:
